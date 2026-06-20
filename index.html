@@ -1,0 +1,134 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+  <meta name="theme-color" content="#10261b">
+  <meta name="description" content="Green Reader - game mini luyện đọc green và putting trên điện thoại, máy tính.">
+  <title>Green Reader - Mini Golf</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="app-shell">
+    <header class="topbar">
+      <a class="brand" href="#" aria-label="Green Reader - trang chính">
+        <span class="brand-mark" aria-hidden="true">
+          <svg viewBox="0 0 40 40" role="img">
+            <path d="M12 31c5-2 11-2 17 0M19 29V9m0 1 11 4-11 4" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>
+            <circle cx="13" cy="29" r="3" fill="currentColor"/>
+          </svg>
+        </span>
+        <span><strong>GREEN</strong><small>READER</small></span>
+      </a>
+
+      <div class="course-picker-wrap">
+        <label for="courseSelect">GREEN</label>
+        <select id="courseSelect" aria-label="Chọn loại green"></select>
+      </div>
+
+      <div class="score-strip" aria-label="Thông tin lượt chơi">
+        <div><span>LƯỢT GẬY</span><strong id="strokeCount">0</strong></div>
+        <div><span>KHOẢNG CÁCH</span><strong><b id="distanceValue">--</b> m</strong></div>
+        <div class="desktop-only"><span>TỐC ĐỘ GREEN</span><strong id="stimpValue">10.5</strong></div>
+      </div>
+
+      <button class="icon-button" id="helpButton" type="button" aria-label="Mở hướng dẫn">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.8 9a2.3 2.3 0 1 1 3.1 2.2c-.8.4-1.3.9-1.3 1.8M12 17h.01"/></svg>
+      </button>
+    </header>
+
+    <main class="game-stage" id="gameStage">
+      <canvas id="gameCanvas" aria-label="Sân golf tương tác"></canvas>
+
+      <section class="green-info glass-panel" aria-live="polite">
+        <span class="eyebrow" id="greenNumber">GREEN 01</span>
+        <h1 id="greenName">Thung lũng</h1>
+        <p id="greenDescription">Green lòng chảo · Dốc vừa</p>
+        <div class="difficulty" aria-label="Độ khó">
+          <span class="active"></span><span class="active"></span><span></span><span></span><span></span>
+        </div>
+      </section>
+
+      <div class="view-tools glass-panel" aria-label="Công cụ xem sân">
+        <button id="slopeButton" class="tool-button active" type="button" aria-pressed="true">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 17c4-7 7 3 11-4s5-5 7-5"/><path d="M4 21h16"/></svg>
+          <span>Đọc dốc</span>
+        </button>
+        <button id="centerButton" class="tool-button" type="button">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M12 2v4m0 12v4M2 12h4m12 0h4"/></svg>
+          <span>Về bóng</span>
+        </button>
+        <button id="placeBallButton" class="tool-button" type="button" aria-pressed="false">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M12 2v5m0 10v5M2 12h5m10 0h5"/><path d="m18.5 5.5 1-1m-15 15 1-1"/></svg>
+          <span>Đặt bóng</span>
+        </button>
+        <button id="zoomButton" class="tool-button" type="button">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m15.5 15.5 5 5M10.5 7v7m-3.5-3.5h7"/></svg>
+          <span>Thu phóng</span>
+        </button>
+      </div>
+
+      <div class="status-pill glass-panel" id="statusPill">
+        <span class="status-dot"></span>
+        <span id="statusText">Kéo đường ngắm để căn hướng</span>
+      </div>
+
+      <div class="camera-tip glass-panel">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 11V7a1 1 0 0 1 2 0v3-5a1 1 0 0 1 2 0v5-4a1 1 0 0 1 2 0v4-2a1 1 0 0 1 2 0v5l2-1a1.4 1.4 0 0 1 2 1.3c0 .4-.2.8-.5 1.1L15 20H9l-4.5-5.5a1.4 1.4 0 0 1 2-2L8 14z"/></svg>
+        <span>Kéo nền để xem green · Cuộn/chụm để zoom</span>
+      </div>
+
+      <section class="shot-controls glass-panel" aria-label="Điều khiển cú đánh">
+        <div class="aim-control">
+          <span class="control-label">GÓC ĐÁNH</span>
+          <div class="angle-row">
+            <button id="aimLeft" type="button" aria-label="Xoay trái">−</button>
+            <strong id="angleValue">0°</strong>
+            <button id="aimRight" type="button" aria-label="Xoay phải">+</button>
+          </div>
+        </div>
+
+        <div class="power-control">
+          <div class="power-heading">
+            <span class="control-label">LỰC ĐÁNH</span>
+            <strong id="powerValue">0%</strong>
+          </div>
+          <div class="power-track" aria-hidden="true">
+            <span class="sweet-spot"></span>
+            <span class="power-fill" id="powerFill"></span>
+            <i class="power-marker" id="powerMarker"></i>
+          </div>
+        </div>
+
+        <button class="putt-button" id="puttButton" type="button">
+          <span class="putt-icon" aria-hidden="true"></span>
+          <span><strong>GIỮ ĐỂ LẤY LỰC</strong><small>Thả để putt</small></span>
+        </button>
+      </section>
+
+      <button class="next-button" id="nextButton" type="button" hidden>
+        Green tiếp theo
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 5 7 7-7 7"/></svg>
+      </button>
+
+      <div class="toast" id="toast" role="status" aria-live="polite"></div>
+    </main>
+  </div>
+
+  <dialog id="helpDialog" class="help-dialog">
+    <button class="dialog-close" id="closeHelp" type="button" aria-label="Đóng">×</button>
+    <span class="eyebrow">CADDIE NOTE</span>
+    <h2>Đọc green, chọn line, rồi putt.</h2>
+    <div class="help-grid">
+      <div><b>01</b><strong>Quan sát dốc</strong><p>Bật “Đọc dốc”. Mũi tên vàng chỉ hướng bóng sẽ trôi xuống.</p></div>
+      <div><b>02</b><strong>Căn đường bóng</strong><p>Kéo đầu đường ngắm trên sân hoặc dùng nút − / + để chỉnh góc.</p></div>
+      <div><b>03</b><strong>Đánh bóng</strong><p>Giữ nút PUTT hoặc phím Space để lên lực, thả đúng thời điểm.</p></div>
+      <div><b>04</b><strong>Đổi góc nhìn</strong><p>Kéo khoảng trống để di chuyển. Cuộn chuột hoặc chụm hai ngón để zoom.</p></div>
+      <div><b>05</b><strong>Đặt lại vị trí bóng</strong><p>Bật “Đặt bóng”, sau đó chạm vị trí bất kỳ bên trong green để luyện line mới.</p></div>
+    </div>
+    <button class="primary-button" id="startPlaying" type="button">Bắt đầu luyện</button>
+  </dialog>
+
+  <script src="game.js"></script>
+</body>
+</html>

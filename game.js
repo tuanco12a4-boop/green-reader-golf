@@ -33,6 +33,10 @@ const ui = {
   helpDialog: document.getElementById("helpDialog"),
   closeHelp: document.getElementById("closeHelp"),
   startPlaying: document.getElementById("startPlaying"),
+  helpDesktopTab: document.getElementById("helpDesktopTab"),
+  helpMobileTab: document.getElementById("helpMobileTab"),
+  desktopGuide: document.getElementById("desktopGuide"),
+  mobileGuide: document.getElementById("mobileGuide"),
   sceneLoading: document.getElementById("sceneLoading"),
   celebration: document.getElementById("celebration"),
   celebrationTitle: document.getElementById("celebrationTitle"),
@@ -1088,6 +1092,32 @@ function onScenePointerUp(event) {
   setStatus("Đã cập nhật hướng đánh trên mô hình 3D", false);
 }
 
+function setHelpTab(device, focusTab = false) {
+  const isMobile = device === "mobile";
+  const activeTab = isMobile ? ui.helpMobileTab : ui.helpDesktopTab;
+  const inactiveTab = isMobile ? ui.helpDesktopTab : ui.helpMobileTab;
+
+  activeTab.classList.add("active");
+  activeTab.setAttribute("aria-selected", "true");
+  activeTab.tabIndex = 0;
+  inactiveTab.classList.remove("active");
+  inactiveTab.setAttribute("aria-selected", "false");
+  inactiveTab.tabIndex = -1;
+
+  ui.mobileGuide.hidden = !isMobile;
+  ui.desktopGuide.hidden = isMobile;
+  ui.mobileGuide.classList.toggle("active", isMobile);
+  ui.desktopGuide.classList.toggle("active", !isMobile);
+
+  if (focusTab) activeTab.focus();
+}
+
+function openHelp() {
+  const mobileControls = window.matchMedia("(max-width: 680px), (pointer: coarse)").matches;
+  setHelpTab(mobileControls ? "mobile" : "desktop");
+  ui.helpDialog.showModal();
+}
+
 function bindEvents() {
   window.addEventListener("resize", resizeRenderer);
   canvas.addEventListener("pointerdown", onScenePointerDown);
@@ -1146,7 +1176,16 @@ function bindEvents() {
 
   ui.celebrationRetry.addEventListener("click", () => loadCourse(courseIndex));
   ui.celebrationNext.addEventListener("click", () => loadCourse(courseIndex + 1));
-  ui.helpButton.addEventListener("click", () => ui.helpDialog.showModal());
+  ui.helpButton.addEventListener("click", openHelp);
+  ui.helpDesktopTab.addEventListener("click", () => setHelpTab("desktop"));
+  ui.helpMobileTab.addEventListener("click", () => setHelpTab("mobile"));
+  [ui.helpDesktopTab, ui.helpMobileTab].forEach(tab => {
+    tab.addEventListener("keydown", event => {
+      if (event.key !== "ArrowLeft" && event.key !== "ArrowRight") return;
+      event.preventDefault();
+      setHelpTab(tab === ui.helpDesktopTab ? "mobile" : "desktop", true);
+    });
+  });
   ui.closeHelp.addEventListener("click", () => ui.helpDialog.close());
   ui.startPlaying.addEventListener("click", () => ui.helpDialog.close());
   ui.helpDialog.addEventListener("click", event => {

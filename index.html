@@ -6,7 +6,7 @@
   <meta name="theme-color" content="#10261b">
   <meta name="description" content="Green Reader - game mini luyện đọc green và putting trên điện thoại, máy tính.">
   <title>Green Reader - Mini Golf</title>
-  <link rel="stylesheet" href="styles.css?v=4">
+  <link rel="stylesheet" href="styles.css?v=5">
 </head>
 <body>
   <div class="app-shell">
@@ -154,19 +154,45 @@
   </div>
 
   <dialog id="helpDialog" class="help-dialog">
-    <button class="dialog-close" id="closeHelp" type="button" aria-label="Đóng">×</button>
-    <span class="eyebrow">CADDIE NOTE</span>
-    <h2>Đọc green, chọn line, rồi putt.</h2>
-    <div class="help-grid">
-      <div><b>01</b><strong>Quan sát địa hình 3D</strong><p>Kéo trên sân để xoay 360°, cuộn hoặc chụm để zoom. Bật “Địa hình 3D” để hiện lưới cao độ và hướng dốc.</p></div>
-      <div><b>02</b><strong>Căn đường bóng</strong><p>Chạm một điểm trên green hoặc dùng nút − / + để chỉnh góc đánh.</p></div>
-      <div><b>03</b><strong>Đánh bóng</strong><p>Giữ nút PUTT hoặc phím Space để lên lực, thả đúng thời điểm.</p></div>
-      <div><b>04</b><strong>Đổi góc nhìn</strong><p>Nút “Góc nhìn” chuyển nhanh giữa toàn cảnh, sát mặt green và từ trên xuống.</p></div>
-      <div><b>05</b><strong>Đặt lại vị trí bóng</strong><p>Bật “Đặt bóng”, sau đó chạm vị trí bất kỳ bên trong green để luyện line mới.</p></div>
-      <div><b>06</b><strong>Đánh lại và ghi điểm</strong><p>“Đánh lại” đưa bóng về trước cú gần nhất. Khi vào lỗ, điểm green và tổng điểm được lưu trên thiết bị.</p></div>
-      <div><b>07</b><strong>Chơi tính gậy</strong><p>Mỗi cú được cộng liên tục từ đầu green. Bóng ra ngoài sẽ được thả tại mép nơi bóng rời sân và cộng 1 gậy phạt.</p></div>
+    <button class="dialog-close" id="closeHelp" type="button" aria-label="Đóng hướng dẫn">×</button>
+    <span class="eyebrow">HƯỚNG DẪN CHƠI</span>
+    <h2>Chọn thiết bị của bạn</h2>
+
+    <div class="guide-tabs" role="tablist" aria-label="Hướng dẫn theo thiết bị">
+      <button class="guide-tab active" id="helpDesktopTab" type="button" role="tab" aria-selected="true" aria-controls="desktopGuide">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="13" rx="2"/><path d="M8 21h8M12 17v4"/></svg>
+        Máy tính
+      </button>
+      <button class="guide-tab" id="helpMobileTab" type="button" role="tab" aria-selected="false" aria-controls="mobileGuide">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="7" y="2" width="10" height="20" rx="2"/><path d="M10 5h4M11 19h2"/></svg>
+        Điện thoại
+      </button>
     </div>
-    <button class="primary-button" id="startPlaying" type="button">Bắt đầu luyện</button>
+
+    <section class="guide-panel active" id="desktopGuide" role="tabpanel" aria-labelledby="helpDesktopTab">
+      <div class="guide-grid">
+        <article class="guide-step"><b>01</b><div><strong>Nhìn và đọc độ dốc</strong><p>Giữ chuột trái rồi kéo để xoay green. Cuộn con lăn để zoom. Bật <em>Địa hình 3D</em> để xem lưới cao độ và mũi tên dốc.</p></div></article>
+        <article class="guide-step"><b>02</b><div><strong>Căn hướng đánh</strong><p>Nhấp vào một điểm trên green hoặc dùng <kbd>←</kbd> <kbd>→</kbd> để đổi góc. Đường nét đứt là hướng bóng dự kiến.</p></div></article>
+        <article class="guide-step"><b>03</b><div><strong>Chọn lực và putt</strong><p>Giữ <kbd>Space</kbd> hoặc nút <em>Giữ để lên lực</em>. Thả khi thanh lực đạt mức mong muốn.</p></div></article>
+        <article class="guide-step"><b>04</b><div><strong>Đổi góc nhìn</strong><p>Nhấn <em>Góc nhìn</em> để chuyển giữa toàn cảnh, sát mặt green và từ trên xuống. Bạn vẫn có thể xoay, zoom ở mọi góc.</p></div></article>
+        <article class="guide-step"><b>05</b><div><strong>Tính gậy và bóng ra ngoài</strong><p>Mỗi cú đánh được cộng từ đầu green. Bóng ra ngoài sẽ được đặt ở mép nơi rời sân và cộng thêm 1 gậy phạt.</p></div></article>
+        <article class="guide-step"><b>06</b><div><strong>Luyện tập nhanh</strong><p>Nhấn <kbd>R</kbd> để đánh lại. Chuyển sang <em>Luyện tự do</em>, rồi nhấn <kbd>M</kbd> để bật chế độ đặt bóng.</p></div></article>
+      </div>
+    </section>
+
+    <section class="guide-panel" id="mobileGuide" role="tabpanel" aria-labelledby="helpMobileTab" hidden>
+      <div class="guide-grid">
+        <article class="guide-step"><b>01</b><div><strong>Xoay và zoom green</strong><p>Kéo một ngón tay trên sân để xoay. Chụm hoặc mở hai ngón tay để thu nhỏ, phóng to địa hình.</p></div></article>
+        <article class="guide-step"><b>02</b><div><strong>Quan sát độ dốc</strong><p>Chạm <em>Địa hình 3D</em> để bật lưới cao độ và mũi tên. Chạm <em>Góc nhìn</em> để đổi nhanh góc camera.</p></div></article>
+        <article class="guide-step"><b>03</b><div><strong>Căn đường bóng</strong><p>Chạm điểm muốn ngắm trên green hoặc dùng nút <em>−</em> và <em>+</em> cạnh số góc để tinh chỉnh.</p></div></article>
+        <article class="guide-step"><b>04</b><div><strong>Chọn lực và putt</strong><p>Giữ nút <em>Giữ để lên lực</em>, theo dõi thanh lực, rồi nhấc tay để đánh bóng.</p></div></article>
+        <article class="guide-step"><b>05</b><div><strong>Tiếp tục đến lỗ</strong><p>Đánh từ vị trí bóng dừng. Nếu ra ngoài, bóng được thả ở mép green và bạn nhận thêm 1 gậy phạt.</p></div></article>
+        <article class="guide-step"><b>06</b><div><strong>Đặt bóng để luyện</strong><p>Chuyển sang <em>Luyện tự do</em>, bật <em>Đặt bóng</em>, rồi chạm vị trí mới. Dùng <em>Đánh lại</em> để trở về trước cú gần nhất.</p></div></article>
+      </div>
+    </section>
+
+    <div class="guide-tip"><strong>Mẹo:</strong> Mũi tên trên green chỉ hướng xuống dốc. Hãy ngắm bù sang phía ngược lại trước khi putt.</div>
+    <button class="primary-button" id="startPlaying" type="button">Đã hiểu, bắt đầu chơi</button>
   </dialog>
 
   <script type="importmap">
@@ -177,6 +203,6 @@
       }
     }
   </script>
-  <script type="module" src="game.js?v=4"></script>
+  <script type="module" src="game.js?v=5"></script>
 </body>
 </html>

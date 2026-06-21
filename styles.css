@@ -218,6 +218,8 @@ button { color: inherit; }
 .tool-button:last-child { border-right: 0; }
 .tool-button span { font-size: 9px; font-weight: 750; }
 .tool-button:hover, .tool-button.active { color: var(--accent); background: rgba(215,240,90,.08); }
+.tool-button.locked { opacity: .42; }
+.tool-button.locked:hover { color: var(--muted); background: transparent; }
 
 .celebration {
   position: absolute;
@@ -305,7 +307,7 @@ button { color: inherit; }
 .camera-tip {
   position: absolute;
   left: 22px;
-  bottom: 24px;
+  bottom: 78px;
   display: flex;
   align-items: center;
   gap: 9px;
@@ -316,6 +318,28 @@ button { color: inherit; }
   pointer-events: none;
 }
 .camera-tip svg { width: 17px; height: 17px; fill: none; stroke: var(--accent); stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; }
+
+.round-mode {
+  position: absolute;
+  z-index: 6;
+  left: 22px;
+  bottom: 24px;
+  min-width: 164px;
+  height: 44px;
+  padding: 0 13px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  color: var(--muted);
+  cursor: pointer;
+}
+.round-mode i { width: 9px; height: 9px; border-radius: 50%; background: #839087; box-shadow: 0 0 0 4px rgba(255,255,255,.05); }
+.round-mode span { display: flex; flex-direction: column; align-items: flex-start; line-height: 1.1; }
+.round-mode small { font-size: 7px; font-weight: 900; letter-spacing: .16em; }
+.round-mode strong { margin-top: 3px; font-size: 11px; color: var(--ink); }
+.round-mode.active { color: var(--accent); border-color: rgba(215,240,90,.34); background: rgba(15,38,26,.9); }
+.round-mode.active i { background: var(--accent); box-shadow: 0 0 0 4px rgba(215,240,90,.12), 0 0 12px rgba(215,240,90,.5); }
 
 .shot-controls {
   position: absolute;
@@ -441,6 +465,7 @@ button { color: inherit; }
   .camera-tip { display: none; }
   .view-tools .tool-button { min-width: 60px; }
   .status-pill { top: 96px; }
+  .round-mode { bottom: 120px; }
 }
 
 @media (max-width: 680px) {
@@ -472,6 +497,7 @@ button { color: inherit; }
   .tool-button span { display: none; }
   .status-pill { top: 78px; font-size: 9px; padding: 7px 10px; }
   .view-badge { right: 13px; top: 116px; padding: 6px 8px; }
+  .round-mode { left: 12px; bottom: 146px; min-width: 145px; height: 40px; padding: 0 10px; }
 
   .shot-controls {
     left: 10px;
@@ -515,6 +541,7 @@ button { color: inherit; }
   .shot-controls { bottom: 8px; height: 72px; width: min(610px, calc(100% - 40px)); grid-template-columns: 105px 1fr 175px; padding: 8px; }
   .putt-button { height: 52px; }
   .camera-tip { display: none; }
+  .round-mode { left: 9px; bottom: 88px; }
 }
 
 @media (prefers-reduced-motion: reduce) {

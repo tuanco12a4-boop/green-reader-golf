@@ -8,6 +8,8 @@ const ui = {
   distanceValue: document.getElementById("distanceValue"),
   stimpValue: document.getElementById("stimpValue"),
   scoreValue: document.getElementById("scoreValue"),
+  roundModeButton: document.getElementById("roundModeButton"),
+  roundModeLabel: document.getElementById("roundModeLabel"),
   greenNumber: document.getElementById("greenNumber"),
   greenName: document.getElementById("greenName"),
   greenDescription: document.getElementById("greenDescription"),
@@ -152,6 +154,7 @@ let courseIndex = 0;
 let course = courses[courseIndex];
 let lastTime = performance.now();
 let showTerrain = true;
+let roundMode = true;
 let strokeCount = 0;
 let power = 0;
 let charging = false;
@@ -161,6 +164,7 @@ let placementMode = false;
 let toastTimer = 0;
 let traceAccumulator = 0;
 let previousSafePosition = null;
+let lastInsidePosition = null;
 let pointerStart = null;
 let cameraViewIndex = 0;
 let sinkProgress = 0;
@@ -649,6 +653,21 @@ function raycastGreen(clientX, clientY) {
   };
 }
 
+function findBoundaryDrop(insidePoint, outsidePoint) {
+  const inset = BALL_RADIUS * PIXELS_PER_METER + 4;
+  let inside = insidePoint && isInsideGreen(insidePoint.x, insidePoint.y, inset)
+    ? { x: insidePoint.x, y: insidePoint.y }
+    : { x: WORLD.cx, y: WORLD.cy };
+  let outside = { x: outsidePoint.x, y: outsidePoint.y };
+
+  for (let i = 0; i < 24; i += 1) {
+    const middle = { x: (inside.x + outside.x) / 2, y: (inside.y + outside.y) / 2 };
+    if (isInsideGreen(middle.x, middle.y, inset)) inside = middle;
+    else outside = middle;
+  }
+  return inside;
+}
+
 function updatePhysics(dt) {
   if (!ball.rolling || ball.sunk) return;
   const slope = gradientAt(ball.x, ball.y);
@@ -665,6 +684,9 @@ function updatePhysics(dt) {
 
   ball.x += ball.vx * dt;
   ball.y += ball.vy * dt;
+  if (isInsideGreen(ball.x, ball.y, BALL_RADIUS * PIXELS_PER_METER + 4)) {
+    lastInsidePosition = { x: ball.x, y: ball.y };
+  }
   traceAccumulator += dt;
   if (traceAccumulator > 0.045) {
     ball.trail.push({ x: ball.x, y: ball.y });
@@ -680,23 +702,25 @@ function updatePhysics(dt) {
   }
 
   if (!isInsideGreen(ball.x, ball.y, -18)) {
+    const dropPosition = findBoundaryDrop(lastInsidePosition || previousSafePosition, { x: ball.x, y: ball.y });
     ball.rolling = false;
     ball.vx = 0;
     ball.vy = 0;
     ui.puttButton.disabled = true;
     clearTimeout(outOfBoundsTimer);
     outOfBoundsTimer = setTimeout(() => {
-      if (!previousSafePosition) return;
-      ball.x = previousSafePosition.x;
-      ball.y = previousSafePosition.y;
-      ball.trail = [];
+      ball.x = dropPosition.x;
+      ball.y = dropPosition.y;
+      ball.trail.push({ x: dropPosition.x, y: dropPosition.y });
+      lastInsidePosition = { ...dropPosition };
       strokeCount += 1;
       ui.strokeCount.textContent = strokeCount;
       ui.puttButton.disabled = false;
       updateDistance();
       refreshGuides();
-      setStatus("Bóng ngoài green · Đã đặt lại và cộng gậy phạt", false);
-      showToast("Ngoài green", "Cộng 1 gậy phạt");
+      syncBallMesh();
+      setStatus(`Bóng đặt tại mép green · Cú tiếp theo là gậy ${strokeCount + 1}`, false);
+      showToast("Bóng ra ngoài", "Đặt tại điểm rời green · +1 gậy phạt");
     }, 450);
     return;
   }
@@ -711,7 +735,9 @@ function stopBall() {
   ui.puttButton.disabled = false;
   updateDistance();
   refreshGuides();
-  setStatus("Bóng đã dừng · Chạm green để căn cú tiếp theo", false);
+  setStatus(roundMode
+    ? `Vị trí cú tiếp theo · Chuẩn bị gậy ${strokeCount + 1}`
+    : "Bóng đã dừng · Chạm green để căn cú tiếp theo", false);
 }
 
 function sinkBall() {
@@ -738,6 +764,7 @@ function hitBall() {
   }
   const speed = 110 + power * 4.25;
   previousSafePosition = { x: ball.x, y: ball.y, strokeCount };
+  lastInsidePosition = { x: ball.x, y: ball.y };
   ball.vx = Math.cos(aimAngle) * speed;
   ball.vy = Math.sin(aimAngle) * speed;
   ball.rolling = true;
@@ -751,6 +778,11 @@ function hitBall() {
 }
 
 function retryLastShot() {
+  if (roundMode) {
+    loadCourse(courseIndex);
+    showToast("Bắt đầu lại green", "Số gậy được tính lại từ 0");
+    return;
+  }
   clearTimeout(celebrationTimer);
   clearTimeout(outOfBoundsTimer);
   hideCelebration();
@@ -765,6 +797,7 @@ function retryLastShot() {
   sinkProgress = 0;
   strokeCount = target.strokeCount;
   previousSafePosition = null;
+  lastInsidePosition = { x: ball.x, y: ball.y };
   ui.strokeCount.textContent = strokeCount;
   ui.puttButton.disabled = false;
   resetPower();
@@ -833,14 +866,35 @@ function setStatus(text, rolling) {
   ui.statusPill.classList.toggle("rolling", Boolean(rolling));
 }
 
+function syncRoundModeUI() {
+  ui.roundModeButton.classList.toggle("active", roundMode);
+  ui.roundModeButton.setAttribute("aria-pressed", String(roundMode));
+  ui.roundModeLabel.textContent = roundMode ? "Tính gậy: BẬT" : "Luyện tự do";
+  ui.placeBallButton.classList.toggle("locked", roundMode);
+  ui.retryButton.title = roundMode ? "Bắt đầu lại green và tính lại từ 0" : "Hoàn tác cú đánh gần nhất";
+  ui.placeBallButton.title = roundMode ? "Tắt chế độ tính gậy để đặt bóng tự do" : "Đặt bóng tại vị trí luyện tập";
+}
+
+function setRoundMode(enabled) {
+  roundMode = Boolean(enabled);
+  syncRoundModeUI();
+  loadCourse(courseIndex);
+  showToast(
+    roundMode ? "Đã bật chơi tính gậy" : "Đã chuyển sang luyện tự do",
+    roundMode ? "Mọi cú đánh và gậy phạt được tính từ đầu green" : "Có thể đặt bóng và hoàn tác từng cú"
+  );
+}
+
 function setPlacementMode(enabled) {
-  placementMode = Boolean(enabled) && !ball.rolling && !ball.sunk;
+  placementMode = Boolean(enabled) && !roundMode && !ball.rolling && !ball.sunk;
   ui.placeBallButton.classList.toggle("active", placementMode);
   ui.placeBallButton.setAttribute("aria-pressed", String(placementMode));
   canvas.classList.toggle("placing", placementMode);
   if (controls) controls.enabled = !placementMode;
   if (placementMode) setStatus("Chạm một vị trí trên mô hình để đặt bóng", false);
-  else if (!ball.rolling && !ball.sunk) setStatus("Kéo để xoay · Chạm green để căn hướng", false);
+  else if (!ball.rolling && !ball.sunk) {
+    setStatus(roundMode ? `Gậy ${strokeCount + 1} · Chạm green để căn hướng` : "Kéo để xoay · Chạm green để căn hướng", false);
+  }
 }
 
 function placeBallAt(x, y) {
@@ -857,6 +911,7 @@ function placeBallAt(x, y) {
   ball.trail = [];
   sinkProgress = 0;
   previousSafePosition = null;
+  lastInsidePosition = { x, y };
   ui.puttButton.disabled = false;
   resetPower();
   aimAtHole();
@@ -911,9 +966,9 @@ function updateScoreUI() {
 }
 
 function showCelebration() {
-  const earned = calculateGreenScore();
+  const earned = roundMode ? calculateGreenScore() : 0;
   const previousBest = Number(bestScores[course.id]) || 0;
-  const isNewBest = earned > previousBest;
+  const isNewBest = roundMode && earned > previousBest;
   if (isNewBest) {
     bestScores[course.id] = earned;
     saveScores();
@@ -921,13 +976,15 @@ function showCelebration() {
   updateScoreUI();
 
   ui.celebrationTitle.textContent = strokeCount === 1 ? "Hole in one!" : strokeCount <= 2 ? "Cú putt xuất sắc!" : "Bóng đã vào lỗ!";
-  ui.celebrationMessage.textContent = `${course.name} · ${isNewBest ? "Kỷ lục mới đã được lưu" : "Green đã hoàn thành"}`;
+  ui.celebrationMessage.textContent = roundMode
+    ? `${course.name} · ${isNewBest ? "Kỷ lục mới đã được lưu" : "Green đã hoàn thành"}`
+    : `${course.name} · Hoàn thành luyện tập, điểm không được lưu`;
   ui.celebrationScore.textContent = `+${earned.toLocaleString("vi-VN")}`;
   ui.celebrationStrokes.textContent = String(strokeCount);
   ui.celebrationTotal.textContent = totalScore().toLocaleString("vi-VN");
   ui.celebration.hidden = false;
   requestAnimationFrame(() => ui.celebration.classList.add("show"));
-  setStatus("Hoàn thành green · Điểm đã được ghi nhận", false);
+  setStatus(roundMode ? "Hoàn thành green · Điểm và số gậy đã được ghi nhận" : "Hoàn thành green luyện tập", false);
   playSuccessSound();
 }
 
@@ -986,6 +1043,7 @@ function loadCourse(index) {
   ball.trail = [];
   sinkProgress = 0;
   previousSafePosition = null;
+  lastInsidePosition = { x: ball.x, y: ball.y };
   setPlacementMode(false);
   strokeCount = 0;
   ui.strokeCount.textContent = "0";
@@ -1001,10 +1059,11 @@ function loadCourse(index) {
   aimAtHole();
   updateDistance();
   updateScoreUI();
+  syncRoundModeUI();
   syncBallMesh();
   refreshGuides();
   setCameraView(0);
-  setStatus("Kéo để xoay · Chạm green để căn hướng", false);
+  setStatus(roundMode ? "Gậy 1 · Chạm green để căn hướng" : "Kéo để xoay · Chạm green để căn hướng", false);
   showToast(course.name, course.detail);
 }
 
@@ -1046,7 +1105,10 @@ function bindEvents() {
     if (event.code === "Space" && !event.repeat && !ui.helpDialog.open && ui.celebration.hidden) startCharge(event);
     if (event.code === "ArrowLeft" && !ball.rolling) setAim(aimAngle - Math.PI / 180);
     if (event.code === "ArrowRight" && !ball.rolling) setAim(aimAngle + Math.PI / 180);
-    if (event.code === "KeyM" && !ui.helpDialog.open) setPlacementMode(!placementMode);
+    if (event.code === "KeyM" && !ui.helpDialog.open) {
+      if (roundMode) showToast("Đang chơi tính gậy", "Chuyển sang Luyện tự do để đặt bóng");
+      else setPlacementMode(!placementMode);
+    }
     if (event.code === "KeyR" && !ui.helpDialog.open) retryLastShot();
     if (event.code === "Escape" && placementMode) setPlacementMode(false);
   });
@@ -1064,6 +1126,10 @@ function bindEvents() {
   });
   ui.centerButton.addEventListener("click", focusCameraOnBall);
   ui.placeBallButton.addEventListener("click", () => {
+    if (roundMode) {
+      showToast("Đang chơi tính gậy", "Chuyển sang Luyện tự do để đặt bóng");
+      return;
+    }
     if (ball.rolling) {
       showToast("Bóng đang lăn", "Đợi bóng dừng rồi đặt lại vị trí");
       return;
@@ -1071,6 +1137,7 @@ function bindEvents() {
     setPlacementMode(!placementMode);
   });
   ui.retryButton.addEventListener("click", retryLastShot);
+  ui.roundModeButton.addEventListener("click", () => setRoundMode(!roundMode));
   ui.zoomButton.addEventListener("click", () => setCameraView(cameraViewIndex + 1, cameraViewIndex === 0));
   ui.courseSelect.addEventListener("change", event => {
     const index = courses.findIndex(item => item.id === event.target.value);

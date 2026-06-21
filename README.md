@@ -28,6 +28,8 @@ Sau đó mở `http://localhost:4173`.
 - Bật **Đặt bóng**, sau đó chạm/click bên trong green để chuyển bóng tới vị trí muốn luyện. Trên PC có thể nhấn phím `M`.
 - Nút **Đánh lại** hoặc phím `R` đưa bóng về trước cú đánh gần nhất và hoàn tác lượt gậy đó.
 - Khi bóng vào lỗ, điểm green được ghi nhận và màn hình chúc mừng hiển thị số gậy, điểm cú đánh và tổng điểm. Điểm tốt nhất được lưu trên thiết bị.
+- Chế độ **Tính gậy: BẬT** giữ số gậy liên tục từ cú đầu tiên đến khi vào lỗ. Trong chế độ này, **Đánh lại** bắt đầu lại toàn green và công cụ đặt bóng bị khóa.
+- Khi bóng ra ngoài, bóng được thả ngay phía trong mép green tại vị trí đã rời sân và cộng thêm 1 gậy phạt. Cú tiếp theo tiếp tục từ điểm thả đó.
 
 ## 23 dạng địa hình
 

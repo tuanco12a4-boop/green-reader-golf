@@ -134,6 +134,41 @@ button { color: inherit; }
 #gameCanvas:active { cursor: grabbing; }
 #gameCanvas.placing, #gameCanvas.placing:active { cursor: crosshair; }
 
+.scene-loading {
+  position: absolute;
+  inset: 0;
+  z-index: 18;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  color: #eaf2e7;
+  background: radial-gradient(circle at 50% 45%, #294c35, #10261b 70%);
+  transition: opacity .45s ease, visibility .45s ease;
+}
+.scene-loading.done { opacity: 0; visibility: hidden; pointer-events: none; }
+.scene-loading span { width: 36px; height: 36px; border: 3px solid rgba(255,255,255,.16); border-top-color: var(--accent); border-radius: 50%; animation: spin .8s linear infinite; }
+.scene-loading strong { font-size: 11px; letter-spacing: .08em; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.view-badge {
+  position: absolute;
+  right: 22px;
+  top: 100px;
+  padding: 7px 10px;
+  border-radius: 20px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--accent);
+  font-size: 8px;
+  font-weight: 900;
+  letter-spacing: .14em;
+  pointer-events: none;
+}
+.view-badge i { width: 6px; height: 6px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 9px var(--accent); }
+
 .glass-panel {
   background: var(--panel);
   border: 1px solid var(--panel-border);
@@ -183,6 +218,71 @@ button { color: inherit; }
 .tool-button:last-child { border-right: 0; }
 .tool-button span { font-size: 9px; font-weight: 750; }
 .tool-button:hover, .tool-button.active { color: var(--accent); background: rgba(215,240,90,.08); }
+
+.celebration {
+  position: absolute;
+  inset: 0;
+  z-index: 40;
+  display: grid;
+  place-items: center;
+  padding: 18px;
+  background: radial-gradient(circle at 50% 38%, rgba(54,96,63,.35), rgba(4,14,9,.86));
+  backdrop-filter: blur(9px);
+  opacity: 0;
+  transition: opacity .35s ease;
+}
+.celebration[hidden] { display: none; }
+.celebration.show { opacity: 1; }
+.celebration-card {
+  position: relative;
+  width: min(430px, 100%);
+  padding: 30px;
+  border: 1px solid rgba(215,240,90,.28);
+  border-radius: 25px;
+  background: linear-gradient(145deg, rgba(21,52,37,.98), rgba(8,27,18,.98));
+  box-shadow: 0 32px 100px rgba(0,0,0,.55), inset 0 1px rgba(255,255,255,.06);
+  text-align: center;
+  transform: translateY(20px) scale(.94);
+  transition: transform .45s cubic-bezier(.2,.9,.25,1.2);
+}
+.celebration.show .celebration-card { transform: translateY(0) scale(1); }
+.cup-mark {
+  width: 74px;
+  height: 74px;
+  margin: -67px auto 16px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  color: #26310c;
+  background: var(--accent);
+  box-shadow: 0 12px 35px rgba(215,240,90,.22);
+}
+.cup-mark svg { width: 42px; height: 42px; fill: none; stroke: currentColor; stroke-width: 3; stroke-linecap: round; stroke-linejoin: round; }
+.celebration h2 { margin: 7px 0 5px; font-size: clamp(27px, 5vw, 38px); letter-spacing: -.035em; }
+.celebration p { margin: 0; color: var(--muted); font-size: 13px; }
+.score-award { margin: 21px 0 14px; padding: 16px; border-radius: 15px; background: rgba(215,240,90,.08); border: 1px solid rgba(215,240,90,.17); }
+.score-award span, .celebration-stats span { display: block; font-size: 8px; font-weight: 900; letter-spacing: .16em; color: var(--muted); }
+.score-award strong { display: block; margin-top: 2px; color: var(--accent); font-size: 35px; font-variant-numeric: tabular-nums; }
+.celebration-stats { display: grid; grid-template-columns: 1fr 1fr; margin-bottom: 20px; }
+.celebration-stats div + div { border-left: 1px solid var(--panel-border); }
+.celebration-stats b { display: block; margin-top: 4px; font-size: 18px; }
+.celebration-actions { display: grid; grid-template-columns: 1fr 1.2fr; gap: 9px; }
+.celebration-actions button { height: 47px; border-radius: 11px; font-weight: 850; font-size: 11px; cursor: pointer; }
+.secondary-action { border: 1px solid var(--panel-border); background: rgba(255,255,255,.04); color: var(--ink); }
+.primary-action { border: 0; color: var(--accent-dark); background: var(--accent); }
+.primary-action span { margin-left: 5px; font-size: 16px; }
+.confetti { position: absolute; inset: 0; overflow: hidden; pointer-events: none; }
+.confetti i { position: absolute; top: -20px; width: 8px; height: 16px; background: var(--accent); opacity: 0; }
+.celebration.show .confetti i { animation: confetti-fall 2.6s ease-in infinite; }
+.confetti i:nth-child(2n) { background: #f3b74a; width: 11px; height: 8px; }
+.confetti i:nth-child(3n) { background: #80c8ff; }
+.confetti i:nth-child(1) { left: 8%; animation-delay: .1s; }.confetti i:nth-child(2) { left: 17%; animation-delay: .8s; }
+.confetti i:nth-child(3) { left: 28%; animation-delay: .35s; }.confetti i:nth-child(4) { left: 37%; animation-delay: 1.2s; }
+.confetti i:nth-child(5) { left: 45%; animation-delay: .55s; }.confetti i:nth-child(6) { left: 54%; animation-delay: 1.45s; }
+.confetti i:nth-child(7) { left: 63%; animation-delay: .15s; }.confetti i:nth-child(8) { left: 71%; animation-delay: 1s; }
+.confetti i:nth-child(9) { left: 80%; animation-delay: .45s; }.confetti i:nth-child(10) { left: 89%; animation-delay: 1.3s; }
+.confetti i:nth-child(11) { left: 33%; animation-delay: 1.7s; }.confetti i:nth-child(12) { left: 75%; animation-delay: 1.85s; }
+@keyframes confetti-fall { 0% { opacity: 0; transform: translate3d(0,-20px,0) rotate(0); } 12% { opacity: 1; } 100% { opacity: 0; transform: translate3d(45px,105vh,0) rotate(620deg); } }
 
 .status-pill {
   position: absolute;
@@ -339,6 +439,8 @@ button { color: inherit; }
   .brand > span:last-child, .desktop-only { display: none; }
   .shot-controls { width: min(620px, calc(100% - 38px)); min-width: 0; }
   .camera-tip { display: none; }
+  .view-tools .tool-button { min-width: 60px; }
+  .status-pill { top: 96px; }
 }
 
 @media (max-width: 680px) {
@@ -354,6 +456,7 @@ button { color: inherit; }
   .score-strip div + div::before { left: -7px; }
   .score-strip span { font-size: 6px; }
   .score-strip strong { font-size: 14px; }
+  .score-points { display: none; }
   .icon-button { width: 34px; height: 34px; }
 
   .game-stage { min-height: 480px; }
@@ -364,10 +467,11 @@ button { color: inherit; }
   .difficulty span { width: 15px; }
 
   .view-tools { top: 12px; right: 12px; }
-  .tool-button { min-width: 47px; padding: 8px 7px; }
+  .view-tools .tool-button { min-width: 46px; padding: 8px 7px; }
   .tool-button svg { width: 18px; }
   .tool-button span { display: none; }
   .status-pill { top: 78px; font-size: 9px; padding: 7px 10px; }
+  .view-badge { right: 13px; top: 116px; padding: 6px 8px; }
 
   .shot-controls {
     left: 10px;
@@ -392,6 +496,8 @@ button { color: inherit; }
   .next-button { top: 45%; }
   .help-dialog { padding: 23px 17px 17px; }
   .help-grid { grid-template-columns: 1fr; max-height: 58vh; overflow-y: auto; }
+  .celebration-card { padding: 27px 18px 18px; }
+  .cup-mark { width: 62px; height: 62px; margin-top: -57px; }
 }
 
 @media (max-height: 620px) and (orientation: landscape) {

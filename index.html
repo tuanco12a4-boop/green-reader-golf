@@ -29,6 +29,7 @@
       <div class="score-strip" aria-label="Thông tin lượt chơi">
         <div><span>LƯỢT GẬY</span><strong id="strokeCount">0</strong></div>
         <div><span>KHOẢNG CÁCH</span><strong><b id="distanceValue">--</b> m</strong></div>
+        <div class="score-points"><span>TỔNG ĐIỂM</span><strong id="scoreValue">0</strong></div>
         <div class="desktop-only"><span>TỐC ĐỘ GREEN</span><strong id="stimpValue">10.5</strong></div>
       </div>
 
@@ -39,6 +40,13 @@
 
     <main class="game-stage" id="gameStage">
       <canvas id="gameCanvas" aria-label="Sân golf tương tác"></canvas>
+
+      <div class="scene-loading" id="sceneLoading">
+        <span></span>
+        <strong>Đang dựng green 3D...</strong>
+      </div>
+
+      <div class="view-badge glass-panel" aria-hidden="true"><i></i> 3D LIVE</div>
 
       <section class="green-info glass-panel" aria-live="polite">
         <span class="eyebrow" id="greenNumber">GREEN 01</span>
@@ -52,7 +60,7 @@
       <div class="view-tools glass-panel" aria-label="Công cụ xem sân">
         <button id="slopeButton" class="tool-button active" type="button" aria-pressed="true">
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 17c4-7 7 3 11-4s5-5 7-5"/><path d="M4 21h16"/></svg>
-          <span>Đọc dốc</span>
+          <span>Địa hình 3D</span>
         </button>
         <button id="centerButton" class="tool-button" type="button">
           <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M12 2v4m0 12v4M2 12h4m12 0h4"/></svg>
@@ -62,20 +70,24 @@
           <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M12 2v5m0 10v5M2 12h5m10 0h5"/><path d="m18.5 5.5 1-1m-15 15 1-1"/></svg>
           <span>Đặt bóng</span>
         </button>
+        <button id="retryButton" class="tool-button" type="button">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9V4m0 0h5M4 4l4 4a7 7 0 1 1-1.8 7"/></svg>
+          <span>Đánh lại</span>
+        </button>
         <button id="zoomButton" class="tool-button" type="button">
-          <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m15.5 15.5 5 5M10.5 7v7m-3.5-3.5h7"/></svg>
-          <span>Thu phóng</span>
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12s3.5-6 9-6 9 6 9 6-3.5 6-9 6-9-6-9-6Z"/><circle cx="12" cy="12" r="2.5"/></svg>
+          <span>Góc nhìn</span>
         </button>
       </div>
 
       <div class="status-pill glass-panel" id="statusPill">
         <span class="status-dot"></span>
-        <span id="statusText">Kéo đường ngắm để căn hướng</span>
+        <span id="statusText">Kéo để xoay · Chạm green để căn hướng</span>
       </div>
 
       <div class="camera-tip glass-panel">
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 11V7a1 1 0 0 1 2 0v3-5a1 1 0 0 1 2 0v5-4a1 1 0 0 1 2 0v4-2a1 1 0 0 1 2 0v5l2-1a1.4 1.4 0 0 1 2 1.3c0 .4-.2.8-.5 1.1L15 20H9l-4.5-5.5a1.4 1.4 0 0 1 2-2L8 14z"/></svg>
-        <span>Kéo nền để xem green · Cuộn/chụm để zoom</span>
+        <span>Kéo để xoay 360° · Cuộn/chụm để zoom · Chạm để căn line</span>
       </div>
 
       <section class="shot-controls glass-panel" aria-label="Điều khiển cú đánh">
@@ -106,10 +118,31 @@
         </button>
       </section>
 
-      <button class="next-button" id="nextButton" type="button" hidden>
-        Green tiếp theo
-        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 5 7 7-7 7"/></svg>
-      </button>
+      <section class="celebration" id="celebration" hidden aria-labelledby="celebrationTitle" role="dialog" aria-modal="true">
+        <div class="confetti" aria-hidden="true">
+          <i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i>
+        </div>
+        <div class="celebration-card">
+          <div class="cup-mark" aria-hidden="true">
+            <svg viewBox="0 0 64 64"><path d="M18 9h28v10c0 10-6 18-14 18s-14-8-14-18V9Z"/><path d="M18 14H9v4c0 8 5 13 12 13M46 14h9v4c0 8-5 13-12 13M32 37v10m-10 8h20M26 47h12v8H26z"/></svg>
+          </div>
+          <span class="eyebrow">GREEN HOÀN THÀNH</span>
+          <h2 id="celebrationTitle">Cú putt tuyệt vời!</h2>
+          <p id="celebrationMessage">Bóng đã vào lỗ.</p>
+          <div class="score-award">
+            <span>ĐIỂM GREEN</span>
+            <strong id="celebrationScore">+0</strong>
+          </div>
+          <div class="celebration-stats">
+            <div><span>SỐ GẬY</span><b id="celebrationStrokes">0</b></div>
+            <div><span>TỔNG ĐIỂM</span><b id="celebrationTotal">0</b></div>
+          </div>
+          <div class="celebration-actions">
+            <button id="celebrationRetry" class="secondary-action" type="button">Chơi lại green</button>
+            <button id="celebrationNext" class="primary-action" type="button">Green tiếp theo <span>→</span></button>
+          </div>
+        </div>
+      </section>
 
       <div class="toast" id="toast" role="status" aria-live="polite"></div>
     </main>
@@ -120,15 +153,24 @@
     <span class="eyebrow">CADDIE NOTE</span>
     <h2>Đọc green, chọn line, rồi putt.</h2>
     <div class="help-grid">
-      <div><b>01</b><strong>Quan sát dốc</strong><p>Bật “Đọc dốc”. Mũi tên vàng chỉ hướng bóng sẽ trôi xuống.</p></div>
-      <div><b>02</b><strong>Căn đường bóng</strong><p>Kéo đầu đường ngắm trên sân hoặc dùng nút − / + để chỉnh góc.</p></div>
+      <div><b>01</b><strong>Quan sát địa hình 3D</strong><p>Kéo trên sân để xoay 360°, cuộn hoặc chụm để zoom. Bật “Địa hình 3D” để hiện lưới cao độ và hướng dốc.</p></div>
+      <div><b>02</b><strong>Căn đường bóng</strong><p>Chạm một điểm trên green hoặc dùng nút − / + để chỉnh góc đánh.</p></div>
       <div><b>03</b><strong>Đánh bóng</strong><p>Giữ nút PUTT hoặc phím Space để lên lực, thả đúng thời điểm.</p></div>
-      <div><b>04</b><strong>Đổi góc nhìn</strong><p>Kéo khoảng trống để di chuyển. Cuộn chuột hoặc chụm hai ngón để zoom.</p></div>
+      <div><b>04</b><strong>Đổi góc nhìn</strong><p>Nút “Góc nhìn” chuyển nhanh giữa toàn cảnh, sát mặt green và từ trên xuống.</p></div>
       <div><b>05</b><strong>Đặt lại vị trí bóng</strong><p>Bật “Đặt bóng”, sau đó chạm vị trí bất kỳ bên trong green để luyện line mới.</p></div>
+      <div><b>06</b><strong>Đánh lại và ghi điểm</strong><p>“Đánh lại” đưa bóng về trước cú gần nhất. Khi vào lỗ, điểm green và tổng điểm được lưu trên thiết bị.</p></div>
     </div>
     <button class="primary-button" id="startPlaying" type="button">Bắt đầu luyện</button>
   </dialog>
 
-  <script src="game.js"></script>
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "./vendor/three.module.js",
+        "three/addons/": "./vendor/addons/"
+      }
+    }
+  </script>
+  <script type="module" src="game.js"></script>
 </body>
 </html>

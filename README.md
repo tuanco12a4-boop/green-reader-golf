@@ -2,7 +2,10 @@
 
 Game mini 3D luyện đọc green và putting với 23 dạng địa hình (3 green ban đầu và 20 green bổ sung), chạy trực tiếp trên trình duyệt máy tính và điện thoại.
 
-Chơi online: <https://tuanco12a4-boop.github.io/green-reader-golf/>
+## Link chơi online
+
+- Green Reader 3D: <https://tuanco12a4-boop.github.io/green-reader-golf/>
+- Tính khoảng cách bóng golf: <https://tuanco12a4-boop.github.io/green-reader-golf/distance/>
 
 ## Chạy game
 

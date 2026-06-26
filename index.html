@@ -2,191 +2,207 @@
 <html lang="vi">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <meta name="theme-color" content="#09261b">
-  <meta name="description" content="Tính Khoảng Cách Bóng Golf - game golf 18 hố luyện đọc cọc màu và chọn gậy.">
-  <title>Tính Khoảng Cách Bóng Golf</title>
-  <link rel="stylesheet" href="styles.css?v=6">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+  <meta name="theme-color" content="#10261b">
+  <meta name="description" content="Green Reader - game mini luyện đọc green và putting trên điện thoại, máy tính.">
+  <title>Green Reader - Mini Golf</title>
+  <link rel="stylesheet" href="styles.css?v=5">
 </head>
 <body>
   <div class="app-shell">
     <header class="topbar">
-      <a class="brand" href="#" id="brandHome" aria-label="Tính Khoảng Cách Bóng Golf - về hố đầu">
-        <span class="brand-icon" aria-hidden="true">
-          <svg viewBox="0 0 48 48"><path d="M25 7v25M25 9l14 5-14 5"/><path d="M7 37c10-5 21-5 34 0"/><circle cx="18" cy="34" r="3"/></svg>
+      <a class="brand" href="#" aria-label="Green Reader - trang chính">
+        <span class="brand-mark" aria-hidden="true">
+          <svg viewBox="0 0 40 40" role="img">
+            <path d="M12 31c5-2 11-2 17 0M19 29V9m0 1 11 4-11 4" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>
+            <circle cx="13" cy="29" r="3" fill="currentColor"/>
+          </svg>
         </span>
-        <span><strong>TÍNH KHOẢNG CÁCH</strong><small>BÓNG GOLF</small></span>
+        <span><strong>GREEN</strong><small>READER</small></span>
       </a>
 
-      <nav class="round-summary" aria-label="Thông tin vòng golf">
-        <div><span>HỐ</span><strong id="headerHole">01 <i>/ 18</i></strong></div>
-        <div><span>PAR</span><strong id="headerPar">4</strong></div>
-        <div><span>ĐÃ ĐÁNH</span><strong id="headerStrokes">0</strong></div>
-        <div class="desktop-stat"><span>TỔNG</span><strong id="headerScore">E</strong></div>
-      </nav>
-
-      <div class="header-actions">
-        <button class="icon-button" id="scorecardButton" type="button" aria-label="Mở scorecard">
-          <svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M7 8h10M7 12h3m2 0h5M7 16h3m2 0h5"/></svg>
-        </button>
-        <button class="icon-button" id="helpButton" type="button" aria-label="Mở hướng dẫn">
-          <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M9.7 9a2.4 2.4 0 1 1 3.3 2.2c-.8.4-1.3 1-1.3 1.8M12 17h.01"/></svg>
-        </button>
+      <div class="course-picker-wrap">
+        <label for="courseSelect">GREEN</label>
+        <select id="courseSelect" aria-label="Chọn loại green"></select>
       </div>
+
+      <div class="score-strip" aria-label="Thông tin lượt chơi">
+        <div><span>LƯỢT GẬY</span><strong id="strokeCount">0</strong></div>
+        <div><span>KHOẢNG CÁCH</span><strong><b id="distanceValue">--</b> m</strong></div>
+        <div class="score-points"><span>TỔNG ĐIỂM</span><strong id="scoreValue">0</strong></div>
+        <div class="desktop-only"><span>TỐC ĐỘ GREEN</span><strong id="stimpValue">10.5</strong></div>
+      </div>
+
+      <button class="icon-button" id="helpButton" type="button" aria-label="Mở hướng dẫn">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.8 9a2.3 2.3 0 1 1 3.1 2.2c-.8.4-1.3.9-1.3 1.8M12 17h.01"/></svg>
+      </button>
     </header>
 
-    <main class="game-layout">
-      <section class="course-stage" id="courseStage" aria-label="Sân golf đang chơi">
-        <canvas id="courseCanvas"></canvas>
+    <main class="game-stage" id="gameStage">
+      <canvas id="gameCanvas" aria-label="Sân golf tương tác"></canvas>
 
-        <div class="course-heading glass-panel">
-          <span class="eyebrow" id="courseEyebrow">HỐ 01 · PAR 3</span>
-          <h1 id="courseName">Mở màn ven hồ</h1>
-          <p id="courseMeta">138 yd · Tee trắng · Gió nhẹ</p>
+      <div class="scene-loading" id="sceneLoading">
+        <span></span>
+        <strong>Đang dựng green 3D...</strong>
+      </div>
+
+      <div class="view-badge glass-panel" aria-hidden="true"><i></i> 3D LIVE</div>
+
+      <section class="green-info glass-panel" aria-live="polite">
+        <span class="eyebrow" id="greenNumber">GREEN 01</span>
+        <h1 id="greenName">Thung lũng</h1>
+        <p id="greenDescription">Green lòng chảo · Dốc vừa</p>
+        <div class="difficulty" aria-label="Độ khó">
+          <span class="active"></span><span class="active"></span><span></span><span></span><span></span>
         </div>
-
-        <div class="legend glass-panel" aria-label="Chú giải địa hình">
-          <span><i class="legend-water"></i>Nước</span>
-          <span><i class="legend-sand"></i>Cát</span>
-          <span><i class="legend-green"></i>Green</span>
-        </div>
-
-        <div class="distance-readout glass-panel" id="distanceReadout">
-          <span>CÒN LẠI</span>
-          <strong id="remainingDistance">?</strong>
-          <small id="distanceUnit">yard</small>
-        </div>
-
-        <div class="wind-badge glass-panel">
-          <svg viewBox="0 0 24 24"><path d="M3 8h11c3 0 3-4 .5-4-1.5 0-2.4.8-2.7 1.6M3 12h16c3 0 3 4 .5 4-1.5 0-2.4-.8-2.7-1.6M3 16h7"/></svg>
-          <span id="windLabel">Gió 4 km/h</span>
-        </div>
-
-        <div class="flight-message" id="flightMessage" aria-live="polite"></div>
       </section>
 
-      <aside class="control-deck">
-        <section class="hole-card panel">
-          <div class="hole-card-top">
-            <div>
-              <span class="eyebrow">VỊ TRÍ BÓNG</span>
-              <h2 id="lieName">Tee box</h2>
-            </div>
-            <span class="lie-chip" id="lieChip">TEE</span>
-          </div>
-          <div class="progress-track" aria-hidden="true">
-            <span id="holeProgress"></span>
-            <i id="ballProgress"></i>
-          </div>
-          <div class="progress-labels"><span>TEE</span><span id="playedDistance">0 / 138 yd</span><span>GREEN</span></div>
-        </section>
+      <div class="view-tools glass-panel" aria-label="Công cụ xem sân">
+        <button id="slopeButton" class="tool-button active" type="button" aria-pressed="true">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 17c4-7 7 3 11-4s5-5 7-5"/><path d="M4 21h16"/></svg>
+          <span>Địa hình 3D</span>
+        </button>
+        <button id="centerButton" class="tool-button" type="button">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M12 2v4m0 12v4M2 12h4m12 0h4"/></svg>
+          <span>Về bóng</span>
+        </button>
+        <button id="placeBallButton" class="tool-button" type="button" aria-pressed="false">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M12 2v5m0 10v5M2 12h5m10 0h5"/><path d="m18.5 5.5 1-1m-15 15 1-1"/></svg>
+          <span>Đặt bóng</span>
+        </button>
+        <button id="retryButton" class="tool-button" type="button">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9V4m0 0h5M4 4l4 4a7 7 0 1 1-1.8 7"/></svg>
+          <span>Đánh lại</span>
+        </button>
+        <button id="zoomButton" class="tool-button" type="button">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12s3.5-6 9-6 9 6 9 6-3.5 6-9 6-9-6-9-6Z"/><circle cx="12" cy="12" r="2.5"/></svg>
+          <span>Góc nhìn</span>
+        </button>
+      </div>
 
-        <section class="setup-card panel" id="setupCard">
-          <div class="section-heading">
-            <span class="step-number">01</span>
-            <div><span class="eyebrow">CHUẨN BỊ</span><h2>Chọn tee và đơn vị</h2></div>
-          </div>
-          <div class="tee-options" role="radiogroup" aria-label="Chọn tee phát bóng">
-            <button type="button" class="tee-option" data-tee="black" aria-pressed="false"><i></i><span>Đen</span><b id="blackDistance">173</b></button>
-            <button type="button" class="tee-option" data-tee="blue" aria-pressed="false"><i></i><span>Xanh</span><b id="blueDistance">160</b></button>
-            <button type="button" class="tee-option active" data-tee="white" aria-pressed="true"><i></i><span>Trắng</span><b id="whiteDistance">138</b></button>
-            <button type="button" class="tee-option" data-tee="red" aria-pressed="false"><i></i><span>Đỏ</span><b id="redDistance">113</b></button>
-          </div>
-          <div class="unit-toggle" role="group" aria-label="Chọn đơn vị">
-            <button type="button" class="active" data-unit="yd">Yard</button>
-            <button type="button" data-unit="m">Mét</button>
-          </div>
-        </section>
+      <div class="status-pill glass-panel" id="statusPill">
+        <span class="status-dot"></span>
+        <span id="statusText">Kéo để xoay · Chạm green để căn hướng</span>
+      </div>
 
-        <section class="mission-card panel" id="missionCard">
-          <div class="section-heading compact">
-            <span class="step-number" id="missionStep">02</span>
-            <div><span class="eyebrow" id="missionEyebrow">CÚ ĐẦU TIÊN</span><h2 id="missionTitle">Phát bóng xuống fairway</h2></div>
-          </div>
+      <div class="camera-tip glass-panel">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 11V7a1 1 0 0 1 2 0v3-5a1 1 0 0 1 2 0v5-4a1 1 0 0 1 2 0v4-2a1 1 0 0 1 2 0v5l2-1a1.4 1.4 0 0 1 2 1.3c0 .4-.2.8-.5 1.1L15 20H9l-4.5-5.5a1.4 1.4 0 0 1 2-2L8 14z"/></svg>
+        <span>Kéo để xoay 360° · Cuộn/chụm để zoom · Chạm để căn line</span>
+      </div>
 
-          <div id="teePhase" class="phase-panel active">
-            <p class="instruction">Nhấn phát bóng. Bóng sẽ bay từ tee box và rơi xuống một vị trí trên fairway.</p>
-            <button class="primary-action" id="driveButton" type="button">
-              <svg viewBox="0 0 32 32"><path d="M22 4 8 22m1-5 7 6M6 24l4 3m7-6 3 3"/><circle cx="24" cy="25" r="3"/></svg>
-              <span><strong>PHÁT BÓNG</strong><small id="driveClubLabel">Bằng Driver</small></span>
-            </button>
-          </div>
+      <button class="round-mode glass-panel active" id="roundModeButton" type="button" aria-pressed="true">
+        <i aria-hidden="true"></i>
+        <span><small>CHẾ ĐỘ</small><strong id="roundModeLabel">Tính gậy: BẬT</strong></span>
+      </button>
 
-          <div id="estimatePhase" class="phase-panel">
-            <p class="instruction">Đọc cọc màu gần bóng và vị trí cờ. Ước tính khoảng cách còn lại đến cờ.</p>
-            <div class="stake-key" aria-label="Khoảng cách các cọc màu">
-              <span><i class="black"></i><b>250</b></span>
-              <span><i class="blue"></i><b>200</b></span>
-              <span><i class="white"></i><b>150</b></span>
-              <span><i class="red"></i><b>100</b></span>
-            </div>
-            <div class="guess-row">
-              <label for="distanceGuess">Khoảng cách bạn tính</label>
-              <div><input id="distanceGuess" type="number" min="1" max="700" inputmode="decimal" placeholder="Nhập số"><span id="guessUnit">yard</span></div>
-            </div>
-            <button class="primary-action" id="checkGuessButton" type="button">KIỂM TRA KHOẢNG CÁCH</button>
-            <p class="guess-feedback" id="guessFeedback" aria-live="polite"></p>
+      <section class="shot-controls glass-panel" aria-label="Điều khiển cú đánh">
+        <div class="aim-control">
+          <span class="control-label">GÓC ĐÁNH</span>
+          <div class="angle-row">
+            <button id="aimLeft" type="button" aria-label="Xoay trái">−</button>
+            <strong id="angleValue">0°</strong>
+            <button id="aimRight" type="button" aria-label="Xoay phải">+</button>
           </div>
+        </div>
 
-          <div id="clubPhase" class="phase-panel">
-            <div class="unlock-banner">
-              <span>✓</span><div><strong>Tính đúng khoảng ±20 <i id="toleranceUnit">yard</i></strong><small id="actualDistanceText">Khoảng cách thật: 146 yard</small></div>
-            </div>
-            <p class="instruction">Chọn gậy theo khoảng cách. Hướng gió và địa hình sẽ ảnh hưởng cú đánh.</p>
-            <div class="club-scroller" id="clubList" role="radiogroup" aria-label="Chọn gậy"></div>
-            <div class="selected-club-stats">
-              <div><span>GẬY</span><strong id="selectedClubName">7 Iron</strong></div>
-              <div><span>TẦM ĐÁNH</span><strong><b id="selectedClubRange">140</b> <i id="clubUnit">yd</i></strong></div>
-              <div><span>SAI SỐ</span><strong id="selectedClubSpread">±8%</strong></div>
-            </div>
-            <button class="primary-action swing-action" id="swingButton" type="button">ĐÁNH CÚ TIẾP THEO</button>
+        <div class="power-control">
+          <div class="power-heading">
+            <span class="control-label">LỰC ĐÁNH</span>
+            <strong id="powerValue">0%</strong>
           </div>
-
-          <div id="completePhase" class="phase-panel">
-            <div class="hole-result">
-              <span class="result-mark">✓</span>
-              <span class="eyebrow">HOÀN THÀNH HỐ</span>
-              <h2 id="resultTitle">PAR</h2>
-              <p id="resultSummary">4 gậy · Par 4</p>
-              <div><span>ĐIỂM VÒNG</span><strong id="roundScore">E</strong></div>
-            </div>
-            <button class="primary-action" id="nextHoleButton" type="button">SANG HỐ TIẾP THEO <span>→</span></button>
+          <div class="power-track" aria-hidden="true">
+            <span class="sweet-spot"></span>
+            <span class="power-fill" id="powerFill"></span>
+            <i class="power-marker" id="powerMarker"></i>
           </div>
-        </section>
+        </div>
 
-        <section class="tip-card panel">
-          <span class="tip-icon">i</span>
-          <p id="coachTip"><strong>Mẹo đọc sân:</strong> cọc đỏ cách tâm green 100 yard, cọc trắng 150, cọc xanh 200 và cọc đen 250.</p>
-        </section>
-      </aside>
+        <button class="putt-button" id="puttButton" type="button">
+          <span class="putt-icon" aria-hidden="true"></span>
+          <span><strong>GIỮ ĐỂ LẤY LỰC</strong><small>Thả để putt</small></span>
+        </button>
+      </section>
+
+      <section class="celebration" id="celebration" hidden aria-labelledby="celebrationTitle" role="dialog" aria-modal="true">
+        <div class="confetti" aria-hidden="true">
+          <i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i>
+        </div>
+        <div class="celebration-card">
+          <div class="cup-mark" aria-hidden="true">
+            <svg viewBox="0 0 64 64"><path d="M18 9h28v10c0 10-6 18-14 18s-14-8-14-18V9Z"/><path d="M18 14H9v4c0 8 5 13 12 13M46 14h9v4c0 8-5 13-12 13M32 37v10m-10 8h20M26 47h12v8H26z"/></svg>
+          </div>
+          <span class="eyebrow">GREEN HOÀN THÀNH</span>
+          <h2 id="celebrationTitle">Cú putt tuyệt vời!</h2>
+          <p id="celebrationMessage">Bóng đã vào lỗ.</p>
+          <div class="score-award">
+            <span>ĐIỂM GREEN</span>
+            <strong id="celebrationScore">+0</strong>
+          </div>
+          <div class="celebration-stats">
+            <div><span>SỐ GẬY</span><b id="celebrationStrokes">0</b></div>
+            <div><span>TỔNG ĐIỂM</span><b id="celebrationTotal">0</b></div>
+          </div>
+          <div class="celebration-actions">
+            <button id="celebrationRetry" class="secondary-action" type="button">Chơi lại green</button>
+            <button id="celebrationNext" class="primary-action" type="button">Green tiếp theo <span>→</span></button>
+          </div>
+        </div>
+      </section>
+
+      <div class="toast" id="toast" role="status" aria-live="polite"></div>
     </main>
   </div>
 
-  <dialog id="scorecardDialog" class="app-dialog scorecard-dialog">
-    <button class="dialog-close" data-close-dialog type="button" aria-label="Đóng">×</button>
-    <span class="eyebrow">BẢNG 18 HỐ</span>
-    <h2>Scorecard vòng đấu</h2>
-    <p class="dialog-lead">Khoảng cách lấy từ file <b>bang_scorecard_golf.xlsx</b>.</p>
-    <div class="scorecard-scroll"><table id="scorecardTable"></table></div>
-    <div class="scorecard-total"><span>TỔNG GẬY</span><strong id="scorecardTotal">0</strong><span>SO VỚI PAR</span><strong id="scorecardVsPar">E</strong></div>
-  </dialog>
+  <dialog id="helpDialog" class="help-dialog">
+    <button class="dialog-close" id="closeHelp" type="button" aria-label="Đóng hướng dẫn">×</button>
+    <span class="eyebrow">HƯỚNG DẪN CHƠI</span>
+    <h2>Chọn thiết bị của bạn</h2>
 
-  <dialog id="helpDialog" class="app-dialog help-dialog">
-    <button class="dialog-close" data-close-dialog type="button" aria-label="Đóng">×</button>
-    <span class="eyebrow">HƯỚNG DẪN</span>
-    <h2>Đọc fairway như golfer</h2>
-    <div class="help-steps">
-      <article><b>01</b><div><strong>Chọn tee</strong><p>Đen xa nhất, sau đó xanh, trắng và đỏ. Chọn yard hoặc mét trước khi phát bóng.</p></div></article>
-      <article><b>02</b><div><strong>Phát bóng</strong><p>Bóng bay từ tee và rơi trên fairway. Quan sát vị trí bóng, bẫy và cờ trên green.</p></div></article>
-      <article><b>03</b><div><strong>Tính khoảng cách</strong><p>Dùng cọc đen 250, xanh 200, trắng 150 và đỏ 100. Cờ đỏ ở đầu green, trắng ở giữa, xanh ở cuối.</p></div></article>
-      <article><b>04</b><div><strong>Chọn gậy</strong><p>Sai số trong 20 yard hoặc mét sẽ mở túi gậy. Chọn gỗ, sắt hoặc wedge theo tầm đánh.</p></div></article>
-      <article><b>05</b><div><strong>Tránh bẫy</strong><p>Nước cộng một gậy phạt và thả bóng; cát làm cú tiếp theo ngắn hơn. Tiếp tục đến khi bóng lên green.</p></div></article>
-      <article><b>06</b><div><strong>Chơi đủ 18 hố</strong><p>Scorecard lưu gậy từng hố và tổng điểm so với par ngay trên thiết bị.</p></div></article>
+    <div class="guide-tabs" role="tablist" aria-label="Hướng dẫn theo thiết bị">
+      <button class="guide-tab active" id="helpDesktopTab" type="button" role="tab" aria-selected="true" aria-controls="desktopGuide">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="13" rx="2"/><path d="M8 21h8M12 17v4"/></svg>
+        Máy tính
+      </button>
+      <button class="guide-tab" id="helpMobileTab" type="button" role="tab" aria-selected="false" aria-controls="mobileGuide">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="7" y="2" width="10" height="20" rx="2"/><path d="M10 5h4M11 19h2"/></svg>
+        Điện thoại
+      </button>
     </div>
-    <button class="primary-action" id="closeHelpButton" type="button">ĐÃ HIỂU, BẮT ĐẦU CHƠI</button>
+
+    <section class="guide-panel active" id="desktopGuide" role="tabpanel" aria-labelledby="helpDesktopTab">
+      <div class="guide-grid">
+        <article class="guide-step"><b>01</b><div><strong>Nhìn và đọc độ dốc</strong><p>Giữ chuột trái rồi kéo để xoay green. Cuộn con lăn để zoom. Bật <em>Địa hình 3D</em> để xem lưới cao độ và mũi tên dốc.</p></div></article>
+        <article class="guide-step"><b>02</b><div><strong>Căn hướng đánh</strong><p>Nhấp vào một điểm trên green hoặc dùng <kbd>←</kbd> <kbd>→</kbd> để đổi góc. Đường nét đứt là hướng bóng dự kiến.</p></div></article>
+        <article class="guide-step"><b>03</b><div><strong>Chọn lực và putt</strong><p>Giữ <kbd>Space</kbd> hoặc nút <em>Giữ để lên lực</em>. Thả khi thanh lực đạt mức mong muốn.</p></div></article>
+        <article class="guide-step"><b>04</b><div><strong>Đổi góc nhìn</strong><p>Nhấn <em>Góc nhìn</em> để chuyển giữa toàn cảnh, sát mặt green và từ trên xuống. Bạn vẫn có thể xoay, zoom ở mọi góc.</p></div></article>
+        <article class="guide-step"><b>05</b><div><strong>Tính gậy và bóng ra ngoài</strong><p>Mỗi cú đánh được cộng từ đầu green. Bóng ra ngoài sẽ được đặt ở mép nơi rời sân và cộng thêm 1 gậy phạt.</p></div></article>
+        <article class="guide-step"><b>06</b><div><strong>Luyện tập nhanh</strong><p>Nhấn <kbd>R</kbd> để đánh lại. Chuyển sang <em>Luyện tự do</em>, rồi nhấn <kbd>M</kbd> để bật chế độ đặt bóng.</p></div></article>
+      </div>
+    </section>
+
+    <section class="guide-panel" id="mobileGuide" role="tabpanel" aria-labelledby="helpMobileTab" hidden>
+      <div class="guide-grid">
+        <article class="guide-step"><b>01</b><div><strong>Xoay và zoom green</strong><p>Kéo một ngón tay trên sân để xoay. Chụm hoặc mở hai ngón tay để thu nhỏ, phóng to địa hình.</p></div></article>
+        <article class="guide-step"><b>02</b><div><strong>Quan sát độ dốc</strong><p>Chạm <em>Địa hình 3D</em> để bật lưới cao độ và mũi tên. Chạm <em>Góc nhìn</em> để đổi nhanh góc camera.</p></div></article>
+        <article class="guide-step"><b>03</b><div><strong>Căn đường bóng</strong><p>Chạm điểm muốn ngắm trên green hoặc dùng nút <em>−</em> và <em>+</em> cạnh số góc để tinh chỉnh.</p></div></article>
+        <article class="guide-step"><b>04</b><div><strong>Chọn lực và putt</strong><p>Giữ nút <em>Giữ để lên lực</em>, theo dõi thanh lực, rồi nhấc tay để đánh bóng.</p></div></article>
+        <article class="guide-step"><b>05</b><div><strong>Tiếp tục đến lỗ</strong><p>Đánh từ vị trí bóng dừng. Nếu ra ngoài, bóng được thả ở mép green và bạn nhận thêm 1 gậy phạt.</p></div></article>
+        <article class="guide-step"><b>06</b><div><strong>Đặt bóng để luyện</strong><p>Chuyển sang <em>Luyện tự do</em>, bật <em>Đặt bóng</em>, rồi chạm vị trí mới. Dùng <em>Đánh lại</em> để trở về trước cú gần nhất.</p></div></article>
+      </div>
+    </section>
+
+    <div class="guide-tip"><strong>Mẹo:</strong> Mũi tên trên green chỉ hướng xuống dốc. Hãy ngắm bù sang phía ngược lại trước khi putt.</div>
+    <button class="primary-button" id="startPlaying" type="button">Đã hiểu, bắt đầu chơi</button>
   </dialog>
 
-  <div class="toast" id="toast" role="status" aria-live="polite"></div>
-  <script type="module" src="game.js?v=6"></script>
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "./vendor/three.module.js",
+        "three/addons/": "./vendor/addons/"
+      }
+    }
+  </script>
+  <script type="module" src="game.js?v=5"></script>
 </body>
 </html>

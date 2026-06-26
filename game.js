@@ -1,731 +1,1228 @@
-const YD_TO_M = 0.9144;
+import * as THREE from "three";
+import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 
-const SCORECARD = {
-  black: [173, 410, 392, 350, 218, 508, 327, 440, 164, 399, 485, 304, 530, 556, 398, 434, 158, 350],
-  blue:  [160, 390, 370, 308, 200, 462, 300, 430, 149, 372, 475, 294, 518, 540, 367, 399, 143, 335],
-  white: [138, 370, 338, 287, 159, 424, 272, 399, 127, 343, 436, 268, 482, 524, 348, 386, 122, 310],
-  red:   [113, 350, 308, 268, 132, 392, 250, 369, 112, 323, 392, 248, 449, 508, 291, 359, 102, 290],
-  par:   [3, 4, 4, 4, 3, 5, 4, 4, 3, 4, 5, 4, 5, 5, 4, 4, 3, 4]
+const canvas = document.getElementById("gameCanvas");
+const ui = {
+  courseSelect: document.getElementById("courseSelect"),
+  strokeCount: document.getElementById("strokeCount"),
+  distanceValue: document.getElementById("distanceValue"),
+  stimpValue: document.getElementById("stimpValue"),
+  scoreValue: document.getElementById("scoreValue"),
+  roundModeButton: document.getElementById("roundModeButton"),
+  roundModeLabel: document.getElementById("roundModeLabel"),
+  greenNumber: document.getElementById("greenNumber"),
+  greenName: document.getElementById("greenName"),
+  greenDescription: document.getElementById("greenDescription"),
+  difficulty: document.querySelectorAll(".difficulty span"),
+  slopeButton: document.getElementById("slopeButton"),
+  centerButton: document.getElementById("centerButton"),
+  placeBallButton: document.getElementById("placeBallButton"),
+  retryButton: document.getElementById("retryButton"),
+  zoomButton: document.getElementById("zoomButton"),
+  statusPill: document.getElementById("statusPill"),
+  statusText: document.getElementById("statusText"),
+  angleValue: document.getElementById("angleValue"),
+  aimLeft: document.getElementById("aimLeft"),
+  aimRight: document.getElementById("aimRight"),
+  powerValue: document.getElementById("powerValue"),
+  powerFill: document.getElementById("powerFill"),
+  powerMarker: document.getElementById("powerMarker"),
+  puttButton: document.getElementById("puttButton"),
+  toast: document.getElementById("toast"),
+  helpButton: document.getElementById("helpButton"),
+  helpDialog: document.getElementById("helpDialog"),
+  closeHelp: document.getElementById("closeHelp"),
+  startPlaying: document.getElementById("startPlaying"),
+  helpDesktopTab: document.getElementById("helpDesktopTab"),
+  helpMobileTab: document.getElementById("helpMobileTab"),
+  desktopGuide: document.getElementById("desktopGuide"),
+  mobileGuide: document.getElementById("mobileGuide"),
+  sceneLoading: document.getElementById("sceneLoading"),
+  celebration: document.getElementById("celebration"),
+  celebrationTitle: document.getElementById("celebrationTitle"),
+  celebrationMessage: document.getElementById("celebrationMessage"),
+  celebrationScore: document.getElementById("celebrationScore"),
+  celebrationStrokes: document.getElementById("celebrationStrokes"),
+  celebrationTotal: document.getElementById("celebrationTotal"),
+  celebrationRetry: document.getElementById("celebrationRetry"),
+  celebrationNext: document.getElementById("celebrationNext")
 };
 
-const HOLES = [
-  { name: "Mở màn ven hồ", terrain: "Hồ bên phải · Green cao", bend: -.08, wave: .04, flag: "red", wind: 4, hazards: [{type:"water",at:.56,side:.9,length:.22,width:.36},{type:"sand",at:.84,side:-.62,length:.12,width:.44}] },
-  { name: "Khúc cua rừng thông", terrain: "Dogleg trái · Fairway hẹp", bend: -.22, wave: .03, flag: "white", wind: 7, hazards: [{type:"sand",at:.48,side:.64,length:.12,width:.42},{type:"sand",at:.82,side:-.58,length:.13,width:.45}] },
-  { name: "Dải cát đôi", terrain: "Bunker hai tầng · Green dài", bend: .08, wave: .08, flag: "blue", wind: 5, hazards: [{type:"sand",at:.42,side:-.58,length:.13,width:.5},{type:"sand",at:.67,side:.62,length:.15,width:.48}] },
-  { name: "Suối cắt fairway", terrain: "Nước ngang · Green nhỏ", bend: .14, wave: .04, flag: "red", wind: 8, hazards: [{type:"water",at:.62,side:0,length:.075,width:1.25},{type:"sand",at:.85,side:.6,length:.12,width:.4}] },
-  { name: "Ốc đảo Par 3", terrain: "Green bán đảo · Cát trước cờ", bend: 0, wave: .02, flag: "blue", wind: 10, hazards: [{type:"water",at:.82,side:-.72,length:.28,width:.56},{type:"sand",at:.79,side:.28,length:.1,width:.42}] },
-  { name: "Đường dài cao nguyên", terrain: "Fairway rộng · Ba bẫy cát", bend: -.12, wave: .07, flag: "white", wind: 6, hazards: [{type:"sand",at:.33,side:.64,length:.12,width:.4},{type:"sand",at:.61,side:-.62,length:.13,width:.45},{type:"sand",at:.86,side:.55,length:.1,width:.4}] },
-  { name: "Thung lũng xanh", terrain: "Dốc xuống · Rough dày", bend: .18, wave: .06, flag: "red", wind: 3, hazards: [{type:"water",at:.48,side:-.74,length:.2,width:.5},{type:"sand",at:.8,side:.61,length:.14,width:.44}] },
-  { name: "Hồ gương", terrain: "Hồ trái dài · Dogleg phải", bend: .25, wave: .03, flag: "blue", wind: 9, hazards: [{type:"water",at:.55,side:-.72,length:.36,width:.54},{type:"sand",at:.86,side:.55,length:.11,width:.4}] },
-  { name: "Kim thông", terrain: "Par 3 hẹp · Bunker ôm green", bend: -.04, wave: .03, flag: "white", wind: 12, hazards: [{type:"sand",at:.78,side:-.54,length:.16,width:.5},{type:"sand",at:.86,side:.54,length:.14,width:.48}] },
-  { name: "Sườn đồi Đông", terrain: "Dốc ngang · Fairway lượn", bend: -.18, wave: .1, flag: "red", wind: 6, hazards: [{type:"sand",at:.46,side:.66,length:.15,width:.42},{type:"water",at:.72,side:-.75,length:.2,width:.48}] },
-  { name: "Bờ biển dài", terrain: "Par 5 ven nước · Gió mạnh", bend: .2, wave: .06, flag: "blue", wind: 15, hazards: [{type:"water",at:.44,side:.76,length:.46,width:.58},{type:"sand",at:.7,side:-.62,length:.13,width:.43},{type:"sand",at:.88,side:.58,length:.1,width:.38}] },
-  { name: "Cầu cạn", terrain: "Suối đôi · Khe hẹp", bend: .06, wave: .1, flag: "white", wind: 5, hazards: [{type:"water",at:.38,side:0,length:.055,width:1.2},{type:"water",at:.7,side:0,length:.055,width:1.2}] },
-  { name: "Hẻm núi Par 5", terrain: "Dogleg kép · Green trên cao", bend: -.2, wave: .13, flag: "red", wind: 11, hazards: [{type:"sand",at:.35,side:.65,length:.14,width:.42},{type:"water",at:.61,side:-.72,length:.2,width:.5},{type:"sand",at:.84,side:.58,length:.13,width:.42}] },
-  { name: "Đường vô địch", terrain: "Hố dài nhất · Hồ trước green", bend: .12, wave: .06, flag: "white", wind: 13, hazards: [{type:"sand",at:.34,side:-.62,length:.14,width:.44},{type:"sand",at:.58,side:.64,length:.14,width:.44},{type:"water",at:.78,side:0,length:.075,width:1.25}] },
-  { name: "Móng ngựa", terrain: "Dogleg phải mạnh · Cát trong góc", bend: .3, wave: .03, flag: "blue", wind: 7, hazards: [{type:"sand",at:.54,side:.42,length:.2,width:.55},{type:"water",at:.82,side:-.68,length:.17,width:.48}] },
-  { name: "Đảo thông xanh", terrain: "Nước hai bên · Lối vào hẹp", bend: -.1, wave: .06, flag: "red", wind: 9, hazards: [{type:"water",at:.45,side:.78,length:.3,width:.48},{type:"water",at:.66,side:-.76,length:.28,width:.5},{type:"sand",at:.86,side:.55,length:.11,width:.4}] },
-  { name: "Cú đánh qua hồ", terrain: "Par 3 qua nước · Green rộng", bend: .04, wave: .02, flag: "blue", wind: 8, hazards: [{type:"water",at:.55,side:0,length:.22,width:1.1},{type:"sand",at:.86,side:-.55,length:.11,width:.43}] },
-  { name: "Đường về clubhouse", terrain: "Fairway chữ S · Bunker bảo vệ cờ", bend: .12, wave: .14, flag: "white", wind: 6, hazards: [{type:"sand",at:.45,side:-.62,length:.14,width:.44},{type:"water",at:.67,side:.73,length:.2,width:.48},{type:"sand",at:.88,side:-.52,length:.11,width:.42}] }
+const WORLD = { width: 1200, height: 760, cx: 600, cy: 380 };
+const PIXELS_PER_METER = 48;
+const HEIGHT_SCALE = 0.88;
+const BALL_RADIUS = 0.16;
+const TAU = Math.PI * 2;
+const SCORE_STORAGE_KEY = "green-reader-best-scores-v1";
+
+const heightProfiles = {
+  valley: (x, y) => {
+    const dx = (x - 610) / 420;
+    const dy = (y - 370) / 280;
+    return dx * dx + dy * dy + 0.40 * Math.sin((x - 120) / 155) - 0.18 * Math.cos(y / 82);
+  },
+  ridge: (x, y) => 1.85 * Math.exp(-Math.pow((y - 380) / 105, 2)) + 0.42 * ((x - 600) / 450) - 0.20 * Math.sin(x / 95),
+  coastal: (x, y) => 0.62 * Math.sin((x - 600) / 120) + 0.46 * Math.cos((y - 380) / 95) + 0.0018 * (y - 380) + 0.0000013 * Math.pow(x - 600, 2),
+  plateau: (x, y) => 1.25 * Math.exp(-Math.pow(Math.hypot((x - 610) / 360, (y - 370) / 225), 4)) + 0.0011 * (x - 600),
+  saddle: (x, y) => 1.25 * ((x - 600) / 440) * ((y - 380) / 280) + 0.18 * Math.sin(x / 110),
+  twoTier: (x, y) => 0.78 * Math.tanh((y - 375) / 58) + 0.0012 * (x - 600),
+  crown: (x, y) => 1.8 * Math.exp(-(Math.pow((x - 600) / 300, 2) + Math.pow((y - 370) / 205, 2))) + 0.12 * Math.sin(y / 70),
+  funnel: (x, y) => 1.55 * (Math.pow((x - 650) / 470, 2) + Math.pow((y - 350) / 300, 2)) - 0.22 * Math.sin(x / 90),
+  westWind: (x, y) => 0.0029 * (x - 600) + 0.34 * Math.sin((y - 100) / 105),
+  eastWind: (x, y) => -0.0027 * (x - 600) + 0.30 * Math.cos(y / 92),
+  uphill: (x, y) => -0.0034 * (y - 380) + 0.22 * Math.sin(x / 125),
+  downhill: (x, y) => 0.0032 * (y - 380) + 0.25 * Math.cos((x + y) / 145),
+  spiral: (x, y) => {
+    const dx = x - 600;
+    const dy = y - 380;
+    return 0.64 * Math.sin(Math.atan2(dy, dx) * 2 + Math.hypot(dx, dy) / 135) + 0.0008 * dy;
+  },
+  ripples: (x, y) => 0.55 * Math.sin(Math.hypot(x - 610, y - 375) / 72) + 0.0012 * (x - 600),
+  horseshoe: (x, y) => {
+    const radius = Math.hypot((x - 610) / 1.2, y - 380);
+    return 1.05 * Math.exp(-Math.pow((radius - 205) / 72, 2)) + 0.0015 * (y - 380);
+  },
+  diagonal: (x, y) => 1.45 * Math.exp(-Math.pow(((x - 600) + 1.35 * (y - 380)) / 145, 2)) - 0.0011 * (x - 600),
+  splitBasin: (x, y) => {
+    const left = Math.pow((x - 420) / 250, 2) + Math.pow((y - 390) / 235, 2);
+    const right = Math.pow((x - 800) / 250, 2) + Math.pow((y - 350) / 235, 2);
+    return Math.min(left, right) + 0.45 * Math.exp(-Math.pow((x - 610) / 85, 2));
+  },
+  terraces: (x, y) => 0.42 * Math.tanh((x - 430) / 38) + 0.42 * Math.tanh((x - 610) / 38) + 0.42 * Math.tanh((x - 790) / 38) + 0.0007 * (y - 380),
+  volcano: (x, y) => {
+    const radius = Math.hypot((x - 600) / 1.2, y - 375);
+    return 1.35 * Math.exp(-Math.pow((radius - 170) / 60, 2)) - 0.55 * Math.exp(-Math.pow(radius / 85, 2));
+  },
+  championship: (x, y) => 0.52 * Math.sin((x - 80) / 105) + 0.42 * Math.cos(y / 82) + 0.48 * Math.tanh(((x - 620) - 0.65 * (y - 380)) / 80) + 0.0009 * (x - 600),
+  crescent: (x, y) => {
+    const curve = y - 380 + 0.0012 * Math.pow(x - 600, 2);
+    return 1.25 * Math.exp(-Math.pow(curve / 82, 2)) + 0.0011 * (x - 600);
+  },
+  doublePeak: (x, y) => {
+    const leftPeak = Math.exp(-(Math.pow((x - 440) / 145, 2) + Math.pow((y - 360) / 155, 2)));
+    const rightPeak = Math.exp(-(Math.pow((x - 770) / 155, 2) + Math.pow((y - 395) / 145, 2)));
+    return 1.35 * leftPeak + 1.2 * rightPeak - 0.0007 * (y - 380);
+  },
+  glass: (x, y) => 0.22 * Math.sin(x / 155) + 0.20 * Math.cos(y / 125) + 0.0015 * (x - 600) - 0.0011 * (y - 380)
+};
+
+const courseSpecs = [
+  ["valley", "Thung lũng", "Green lòng chảo · Dốc vừa", 2, 10.5, 62, 9100, 345, 545, 835, 255],
+  ["ridge", "Sống lưng", "Gờ cao chia line · Dốc mạnh", 4, 11.8, 54, 9800, 330, 280, 885, 455],
+  ["coastal", "Ven biển", "Nhiều tầng dốc · Green nhanh", 5, 12.4, 49, 10300, 300, 510, 905, 250],
+  ["plateau", "Cao nguyên", "Mặt cao thoải ra rìa · Dốc vừa", 3, 10.8, 60, 9300, 315, 480, 850, 285],
+  ["saddle", "Yên ngựa", "Hai triền dốc giao nhau · Line khó", 4, 11.1, 57, 9700, 345, 520, 860, 245],
+  ["twoTier", "Hai tầng", "Bậc green cắt ngang · Chọn lực chuẩn", 4, 11.6, 55, 9900, 315, 535, 875, 245],
+  ["crown", "Mai rùa", "Tâm cao trôi ra bốn phía · Green nhanh", 4, 11.9, 52, 10100, 320, 500, 825, 270],
+  ["funnel", "Phễu lệch", "Lòng chảo lệch tâm · Break dài", 3, 10.7, 60, 9300, 300, 285, 880, 465],
+  ["westWind", "Dốc Tây", "Nghiêng ngang liên tục · Line phải bù", 3, 10.9, 59, 9400, 310, 505, 895, 255],
+  ["eastWind", "Dốc Đông", "Break ngược chiều · Green trung bình", 3, 11.0, 58, 9500, 300, 255, 890, 500],
+  ["uphill", "Lên đồi", "Putt ngược dốc · Cần thêm lực", 2, 9.8, 66, 9000, 600, 585, 600, 190],
+  ["downhill", "Xuống đồi", "Putt xuôi dốc · Kiểm soát tốc độ", 3, 12.1, 51, 10000, 600, 180, 600, 565],
+  ["spiral", "Xoáy ốc", "Dốc xoay quanh tâm · Break kép", 5, 11.7, 54, 10200, 300, 470, 880, 285],
+  ["ripples", "Gợn sóng", "Nhiều gợn thấp · Tốc độ đổi liên tục", 4, 11.3, 56, 9800, 320, 270, 875, 475],
+  ["horseshoe", "Móng ngựa", "Vành dốc cong · Line vòng cung", 5, 11.5, 55, 10100, 325, 520, 875, 255],
+  ["diagonal", "Sống chéo", "Gờ cao cắt chéo green · Break muộn", 4, 11.2, 57, 9900, 315, 245, 890, 500],
+  ["splitBasin", "Hai lòng chảo", "Hai vùng tụ bóng · Vượt gờ giữa", 5, 10.6, 61, 9600, 335, 485, 865, 285],
+  ["terraces", "Ruộng bậc thang", "Ba bậc dốc dọc · Lực là chìa khóa", 5, 11.8, 53, 10300, 295, 500, 910, 260],
+  ["volcano", "Miệng núi", "Vành cao bao tâm thấp · Line lạ", 5, 12.0, 51, 10400, 330, 265, 855, 490],
+  ["championship", "Championship", "Địa hình tổng hợp · Thử thách cao", 5, 12.5, 48, 10600, 295, 520, 910, 235],
+  ["crescent", "Lưỡi liềm", "Gờ cong ôm tâm · Break đổi hướng", 4, 11.4, 56, 9900, 310, 500, 895, 260],
+  ["doublePeak", "Hai đỉnh", "Hai gò cao nối tiếp · Chọn khe line", 5, 11.7, 53, 10200, 300, 270, 905, 485],
+  ["glass", "Mặt kính", "Dốc nhẹ khó thấy · Tốc độ cực nhanh", 5, 13.0, 45, 10500, 315, 520, 890, 245]
 ];
 
-const CLUBS = [
-  { id:"driver", name:"Driver", short:"D", range:225, spread:12, type:"Gỗ" },
-  { id:"wood3", name:"3 Wood", short:"3W", range:205, spread:10, type:"Gỗ" },
-  { id:"wood5", name:"5 Wood", short:"5W", range:185, spread:9, type:"Gỗ" },
-  { id:"iron4", name:"4 Iron", short:"4I", range:175, spread:9, type:"Sắt" },
-  { id:"iron5", name:"5 Iron", short:"5I", range:165, spread:8, type:"Sắt" },
-  { id:"iron6", name:"6 Iron", short:"6I", range:155, spread:8, type:"Sắt" },
-  { id:"iron7", name:"7 Iron", short:"7I", range:145, spread:7, type:"Sắt" },
-  { id:"iron8", name:"8 Iron", short:"8I", range:135, spread:7, type:"Sắt" },
-  { id:"iron9", name:"9 Iron", short:"9I", range:120, spread:6, type:"Sắt" },
-  { id:"pw", name:"Pitching Wedge", short:"PW", range:105, spread:5, type:"Wedge" },
-  { id:"sw", name:"Sand Wedge", short:"SW", range:80, spread:5, type:"Wedge" },
-  { id:"putter", name:"Putter", short:"PT", range:25, spread:3, type:"Putt" }
+const colorSets = [
+  ["#6a9948", "#477a38", "#274f2c"],
+  ["#77a34c", "#4f8138", "#2a542e"],
+  ["#83a95a", "#557d3d", "#294b2d"],
+  ["#72a65a", "#477d42", "#244c35"]
 ];
 
-const FLAG_INFO = {
-  red: { label:"Cờ đỏ · đầu green", color:"#e84238", offset:-10 },
-  white: { label:"Cờ trắng · giữa green", color:"#ffffff", offset:0 },
-  blue: { label:"Cờ xanh · cuối green", color:"#277cc0", offset:10 }
-};
+const courses = courseSpecs.map((spec, index) => ({
+  id: spec[0],
+  number: String(index + 1).padStart(2, "0"),
+  name: spec[1],
+  detail: spec[2],
+  difficulty: spec[3],
+  stimp: spec[4],
+  friction: spec[5],
+  slopeForce: spec[6],
+  colors: colorSets[index % colorSets.length],
+  ball: { x: spec[7], y: spec[8] },
+  hole: { x: spec[9], y: spec[10] },
+  height: heightProfiles[spec[0]]
+}));
 
-const els = Object.fromEntries([...document.querySelectorAll("[id]")].map(el => [el.id, el]));
-const canvas = els.courseCanvas;
-const ctx = canvas.getContext("2d");
+let courseIndex = 0;
+let course = courses[courseIndex];
+let lastTime = performance.now();
+let showTerrain = true;
+let roundMode = true;
+let strokeCount = 0;
+let power = 0;
+let charging = false;
+let chargeStartedAt = 0;
+let aimAngle = 0;
+let placementMode = false;
+let toastTimer = 0;
+let traceAccumulator = 0;
+let previousSafePosition = null;
+let lastInsidePosition = null;
+let pointerStart = null;
+let cameraViewIndex = 0;
+let sinkProgress = 0;
+let celebrationTimer = 0;
+let outOfBoundsTimer = 0;
+let bestScores = loadScores();
 
-const saved = loadSavedState();
-const state = {
-  holeIndex: saved.holeIndex ?? 0,
-  tee: saved.tee ?? "white",
-  unit: saved.unit ?? "yd",
-  scores: Array.isArray(saved.scores) ? saved.scores.slice(0, 18) : Array(18).fill(null),
-  phase: "tee",
-  strokes: 0,
-  remainingYd: 0,
-  side: 0,
-  lie: "tee",
-  selectedClub: "iron7",
-  guessAttempts: 0,
-  animating: false,
-  animation: null
-};
+const ball = { x: 0, y: 0, vx: 0, vy: 0, rolling: false, sunk: false, trail: [] };
+const raycaster = new THREE.Raycaster();
+const pointerNdc = new THREE.Vector2();
 
-while (state.scores.length < 18) state.scores.push(null);
+let renderer;
+let scene;
+let camera;
+let controls;
+let terrainGroup;
+let terrainMesh;
+let terrainWire;
+let slopeGroup;
+let roughGround;
+let holeGroup;
+let flagMesh;
+let ballGroup;
+let ballMesh;
+let aimLine;
+let predictionLine;
+let trailLine;
+let aimHandle;
 
-function loadSavedState() {
-  try { return JSON.parse(localStorage.getItem("fairway-reader-state")) || {}; }
-  catch { return {}; }
-}
-
-function saveState() {
-  try {
-    localStorage.setItem("fairway-reader-state", JSON.stringify({
-      holeIndex: state.holeIndex, tee: state.tee, unit: state.unit, scores: state.scores
-    }));
-  } catch { /* Storage can be unavailable in private browsing. */ }
-}
-
-function hole() { return HOLES[state.holeIndex]; }
-function par() { return SCORECARD.par[state.holeIndex]; }
-function centerDistanceYd() { return SCORECARD[state.tee][state.holeIndex]; }
-function targetDistanceYd() { return centerDistanceYd() + FLAG_INFO[hole().flag].offset; }
-function displayed(valueYd) { return Math.round(valueYd * (state.unit === "m" ? YD_TO_M : 1)); }
-function unitLong() { return state.unit === "m" ? "mét" : "yard"; }
-function unitShort() { return state.unit === "m" ? "m" : "yd"; }
 function clamp(value, min, max) { return Math.max(min, Math.min(max, value)); }
-function formatScore(value) { return value === 0 ? "E" : value > 0 ? `+${value}` : String(value); }
-function holeProgress() { return clamp((targetDistanceYd() - state.remainingYd) / targetDistanceYd(), 0, .985); }
+function magnitude(x, y) { return Math.hypot(x, y); }
 
-function seeded(index) {
-  const x = Math.sin(index * 91.713 + state.holeIndex * 17.17 + state.strokes * 3.1) * 43758.5453;
-  return x - Math.floor(x);
+function boundaryScale(angle) {
+  const coursePhase = courseIndex * 0.7;
+  return 1 + 0.055 * Math.sin(angle * 3 + coursePhase) + 0.035 * Math.cos(angle * 5 - 0.4);
 }
 
-function setPhase(name) {
-  state.phase = name;
-  ["tee", "estimate", "club", "complete"].forEach(phase => {
-    els[`${phase}Phase`].classList.toggle("active", phase === name);
-  });
-  const meta = {
-    tee: ["02", "CÚ ĐẦU TIÊN", "Phát bóng xuống fairway"],
-    estimate: ["03", "ĐỌC CỌC MÀU", "Tính khoảng cách đến cờ"],
-    club: ["04", "TÚI GẬY ĐÃ MỞ", "Chọn gậy cho cú tiếp"],
-    complete: ["✓", "KẾT QUẢ", "Hố đã hoàn thành"]
-  }[name];
-  els.missionStep.textContent = meta[0];
-  els.missionEyebrow.textContent = meta[1];
-  els.missionTitle.textContent = meta[2];
-  els.setupCard.classList.toggle("locked", name !== "tee");
+function isInsideGreen(x, y, margin = 0) {
+  const dx = x - WORLD.cx;
+  const dy = y - WORLD.cy;
+  const angle = Math.atan2(dy, dx);
+  const scale = boundaryScale(angle);
+  const rx = 535 * scale - margin;
+  const ry = 315 * scale - margin;
+  return (dx * dx) / (rx * rx) + (dy * dy) / (ry * ry) <= 1;
 }
 
-function resetHole() {
-  state.strokes = 0;
-  state.remainingYd = targetDistanceYd();
-  state.side = 0;
-  state.lie = "tee";
-  state.guessAttempts = 0;
-  state.animating = false;
-  state.animation = null;
-  els.distanceGuess.value = "";
-  els.guessFeedback.textContent = "";
-  els.guessFeedback.className = "guess-feedback";
-  updateDriveLabel();
-  setPhase("tee");
-  updateUI();
-  draw();
+function gradientAt(x, y) {
+  const step = 3;
+  return {
+    x: (course.height(x + step, y) - course.height(x - step, y)) / (step * 2),
+    y: (course.height(x, y + step) - course.height(x, y - step)) / (step * 2)
+  };
 }
 
-function updateUI() {
-  const currentHole = hole();
-  const distance = centerDistanceYd();
-  const progress = holeProgress();
-  const completed = state.scores.filter(Number.isFinite);
-  const roundPar = state.scores.reduce((sum, score, index) => sum + (Number.isFinite(score) ? SCORECARD.par[index] : 0), 0);
-  const totalStrokes = completed.reduce((sum, score) => sum + score, 0);
-
-  els.headerHole.innerHTML = `${String(state.holeIndex + 1).padStart(2,"0")} <i>/ 18</i>`;
-  els.headerPar.textContent = par();
-  els.headerStrokes.textContent = state.strokes;
-  els.headerScore.textContent = formatScore(totalStrokes - roundPar);
-  els.courseEyebrow.textContent = `HỐ ${String(state.holeIndex + 1).padStart(2,"0")} · PAR ${par()}`;
-  els.courseName.textContent = currentHole.name;
-  els.courseMeta.textContent = `${displayed(distance)} ${unitShort()} · Tee ${teeLabel(state.tee).toLowerCase()} · ${FLAG_INFO[currentHole.flag].label}`;
-  els.windLabel.textContent = `Gió ${currentHole.wind} km/h`;
-  els.distanceUnit.textContent = unitLong();
-  els.guessUnit.textContent = unitLong();
-  els.toleranceUnit.textContent = unitLong();
-  els.clubUnit.textContent = unitShort();
-  els.remainingDistance.textContent = ["club", "complete"].includes(state.phase) ? displayed(state.remainingYd) : "?";
-  els.holeProgress.style.width = `${progress * 100}%`;
-  els.ballProgress.style.left = `${progress * 100}%`;
-  els.playedDistance.textContent = `${displayed(targetDistanceYd() - state.remainingYd)} / ${displayed(targetDistanceYd())} ${unitShort()}`;
-  els.lieName.textContent = lieLabel(state.lie);
-  els.lieChip.textContent = state.lie.toUpperCase();
-  els.coachTip.innerHTML = coachMessage();
-
-  ["black", "blue", "white", "red"].forEach(tee => {
-    els[`${tee}Distance`].textContent = displayed(SCORECARD[tee][state.holeIndex]);
-  });
-  document.querySelectorAll(".tee-option").forEach(button => {
-    const active = button.dataset.tee === state.tee;
-    button.classList.toggle("active", active);
-    button.setAttribute("aria-pressed", String(active));
-  });
-  document.querySelectorAll(".unit-toggle button").forEach(button => {
-    button.classList.toggle("active", button.dataset.unit === state.unit);
-  });
-  updateStakeKey();
-  updateClubStats();
+function worldPoint(x, y, offset = 0) {
+  return new THREE.Vector3(
+    (x - WORLD.cx) / PIXELS_PER_METER,
+    course.height(x, y) * HEIGHT_SCALE + offset,
+    (y - WORLD.cy) / PIXELS_PER_METER
+  );
 }
 
-function teeLabel(tee) { return ({black:"Đen",blue:"Xanh",white:"Trắng",red:"Đỏ"})[tee]; }
-function lieLabel(lie) { return ({tee:"Tee box",fairway:"Fairway",rough:"Rough",sand:"Bẫy cát",green:"Green"})[lie] || "Fairway"; }
+function initScene() {
+  renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: "high-performance" });
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.75));
+  renderer.outputColorSpace = THREE.SRGBColorSpace;
+  renderer.toneMapping = THREE.ACESFilmicToneMapping;
+  renderer.toneMappingExposure = 1.05;
+  renderer.shadowMap.enabled = true;
+  renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 
-function coachMessage() {
-  if (state.lie === "sand") return "<strong>Đang ở bẫy cát:</strong> cú đánh bị giảm khoảng 22%. Wedge hoặc gậy nhiều loft sẽ an toàn hơn.";
-  if (state.lie === "rough") return "<strong>Bóng trong rough:</strong> cú đánh bị giảm khoảng 10%. Chọn dư một gậy nếu khoảng cách xa.";
-  if (state.phase === "estimate") return `<strong>Nhìn cờ:</strong> ${FLAG_INFO[hole().flag].label}. Cọc màu đo tới tâm green, hãy bù vị trí cờ.`;
-  return "<strong>Mẹo đọc sân:</strong> cọc đỏ cách tâm green 100 yard, cọc trắng 150, cọc xanh 200 và cọc đen 250.";
+  scene = new THREE.Scene();
+  scene.background = new THREE.Color("#173624");
+  scene.fog = new THREE.Fog("#173624", 24, 58);
+
+  camera = new THREE.PerspectiveCamera(38, 1, 0.1, 100);
+  controls = new OrbitControls(camera, canvas);
+  controls.enableDamping = true;
+  controls.dampingFactor = 0.075;
+  controls.enablePan = true;
+  controls.screenSpacePanning = false;
+  controls.minDistance = 7;
+  controls.maxDistance = 55;
+  controls.minPolarAngle = 0.14;
+  controls.maxPolarAngle = Math.PI * 0.47;
+  controls.zoomToCursor = true;
+  controls.target.set(0, 0, 0);
+
+  const hemisphere = new THREE.HemisphereLight("#dff4ff", "#16331f", 2.35);
+  scene.add(hemisphere);
+
+  const sun = new THREE.DirectionalLight("#fff5d2", 3.2);
+  sun.position.set(-10, 18, 11);
+  sun.castShadow = true;
+  sun.shadow.mapSize.set(1024, 1024);
+  sun.shadow.camera.left = -16;
+  sun.shadow.camera.right = 16;
+  sun.shadow.camera.top = 12;
+  sun.shadow.camera.bottom = -12;
+  sun.shadow.camera.near = 1;
+  sun.shadow.camera.far = 45;
+  sun.shadow.bias = -0.0002;
+  scene.add(sun);
+
+  const fill = new THREE.DirectionalLight("#8ec7ff", 0.55);
+  fill.position.set(12, 7, -9);
+  scene.add(fill);
+
+  createRoughGround();
+  createBall();
+  createGuideObjects();
+  resizeRenderer();
 }
 
-function updateStakeKey() {
-  const values = [250, 200, 150, 100];
-  document.querySelectorAll(".stake-key b").forEach((label, index) => {
-    label.textContent = displayed(values[index]);
-  });
-}
-
-function renderClubs() {
-  els.clubList.innerHTML = CLUBS.map(club => `
-    <button class="club-card" type="button" data-club="${club.id}" role="radio" aria-checked="false">
-      <span class="club-icon">${club.short}</span>
-      <strong>${club.name}</strong>
-      <small>${club.type}</small>
-    </button>`).join("");
-  els.clubList.addEventListener("click", event => {
-    const button = event.target.closest("[data-club]");
-    if (!button || state.animating) return;
-    state.selectedClub = button.dataset.club;
-    updateClubStats();
-  });
-}
-
-function updateClubStats() {
-  const club = CLUBS.find(item => item.id === state.selectedClub) || CLUBS[6];
-  document.querySelectorAll(".club-card").forEach(button => {
-    const active = button.dataset.club === club.id;
-    button.classList.toggle("active", active);
-    button.setAttribute("aria-checked", String(active));
-  });
-  els.selectedClubName.textContent = club.name;
-  els.selectedClubRange.textContent = displayed(club.range);
-  els.selectedClubSpread.textContent = `±${club.spread}%`;
-}
-
-function recommendClub() {
-  const lieMultiplier = state.lie === "sand" ? .78 : state.lie === "rough" ? .9 : 1;
-  const best = CLUBS.reduce((choice, club) => {
-    const difference = Math.abs(club.range * lieMultiplier - state.remainingYd);
-    return difference < choice.difference ? {club, difference} : choice;
-  }, {club: CLUBS[6], difference: Infinity}).club;
-  state.selectedClub = best.id;
-  updateClubStats();
-  requestAnimationFrame(() => {
-    els.clubList.querySelector(".active")?.scrollIntoView({behavior:"smooth",block:"nearest",inline:"center"});
-  });
-}
-
-function startDrive() {
-  if (state.animating || state.phase !== "tee") return;
-  const target = targetDistanceYd();
-  const variation = (seeded(2) - .5) * 12;
-  const carry = clamp(target * .55 + variation, 62, 215);
-  const safeCarry = Math.min(carry, target - 42);
-  state.strokes += 1;
-  const side = (seeded(3) - .5) * .62;
-  resolveShot(safeCarry, side, "Cú phát bóng");
-}
-
-function checkGuess() {
-  if (state.phase !== "estimate" || state.animating) return;
-  const guess = Number(els.distanceGuess.value);
-  if (!Number.isFinite(guess) || guess <= 0) {
-    els.guessFeedback.textContent = "Hãy nhập một khoảng cách lớn hơn 0.";
-    els.distanceGuess.focus();
-    return;
+function createRoughGround() {
+  const geometry = new THREE.PlaneGeometry(60, 42, 38, 28);
+  geometry.rotateX(-Math.PI / 2);
+  const positions = geometry.attributes.position;
+  const colors = [];
+  const dark = new THREE.Color("#163d27");
+  const light = new THREE.Color("#245e37");
+  for (let i = 0; i < positions.count; i += 1) {
+    const x = positions.getX(i);
+    const z = positions.getZ(i);
+    positions.setY(i, -2.25 + 0.08 * Math.sin(x * 1.8) + 0.06 * Math.cos(z * 2.1));
+    const mix = 0.35 + 0.20 * Math.sin((x + z) * 1.7) + Math.random() * 0.12;
+    const color = dark.clone().lerp(light, clamp(mix, 0, 1));
+    colors.push(color.r, color.g, color.b);
   }
-  const actual = displayed(state.remainingYd);
-  const difference = Math.abs(guess - actual);
-  state.guessAttempts += 1;
-  if (difference <= 20) {
-    els.guessFeedback.className = "guess-feedback success";
-    els.guessFeedback.textContent = `Chính xác! Sai số ${difference} ${unitShort()}.`;
-    els.actualDistanceText.textContent = `Khoảng cách thật: ${actual} ${unitLong()}`;
-    setPhase("club");
-    recommendClub();
-    updateUI();
-    showToast("Túi gậy đã mở. Chọn gậy cho cú tiếp theo.");
-    return;
-  }
-  const direction = guess < actual ? "Bạn đang tính hơi ngắn" : "Bạn đang tính hơi dài";
-  const hint = state.guessAttempts >= 2 ? ` Còn khoảng ${Math.round(actual / 10) * 10} ${unitShort()}.` : " Hãy nhìn cọc gần bóng nhất.";
-  els.guessFeedback.className = "guess-feedback";
-  els.guessFeedback.textContent = `${direction} (${difference} ${unitShort()}).${hint}`;
-  shake(els.distanceGuess);
+  geometry.setAttribute("color", new THREE.Float32BufferAttribute(colors, 3));
+  geometry.computeVertexNormals();
+  const material = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 1 });
+  roughGround = new THREE.Mesh(geometry, material);
+  roughGround.receiveShadow = true;
+  scene.add(roughGround);
 }
 
-function swingClub() {
-  if (state.animating || state.phase !== "club") return;
-  const club = CLUBS.find(item => item.id === state.selectedClub);
-  const lieMultiplier = state.lie === "sand" ? .78 : state.lie === "rough" ? .9 : 1;
-  const windMultiplier = 1 - Math.min(hole().wind, 18) * .0025;
-  const strike = .96 + seeded(11) * .08;
-  const carry = club.range * lieMultiplier * windMultiplier * strike;
-  const side = clamp((seeded(12) - .5) * (club.spread / 9), -.82, .82);
-  state.strokes += 1;
-  resolveShot(carry, side, club.name);
-}
+function createTerrainGeometry() {
+  const segments = 144;
+  const rings = 42;
+  const positions = [];
+  const colors = [];
+  const indices = [];
+  const lowColor = new THREE.Color(course.colors[2]);
+  const highColor = new THREE.Color(course.colors[0]);
 
-function resolveShot(carry, side, label) {
-  const target = targetDistanceYd();
-  const startRemaining = state.remainingYd;
-  let nextRemaining;
-  let overshot = false;
-  if (carry > startRemaining) {
-    overshot = true;
-    nextRemaining = Math.max(2, (carry - startRemaining) * .58);
-  } else {
-    nextRemaining = startRemaining - carry;
-  }
-  let landingP = clamp((target - nextRemaining) / target, .02, .985);
-  const hazard = findHazard(landingP, side);
-  let nextLie = Math.abs(side) > .48 ? "rough" : "fairway";
-  let message = `${label}: ${displayed(carry)} ${unitShort()}`;
+  const addVertex = (x, y) => {
+      const height = course.height(x, y);
+      positions.push((x - WORLD.cx) / PIXELS_PER_METER, height * HEIGHT_SCALE, (y - WORLD.cy) / PIXELS_PER_METER);
+      const stripe = (Math.floor((x + y * 0.28) / 85) + courseIndex) % 2 === 0 ? 0.08 : -0.03;
+      const heightMix = clamp(0.55 + height * 0.12 + stripe, 0.18, 0.88);
+      const color = lowColor.clone().lerp(highColor, heightMix);
+      colors.push(color.r, color.g, color.b);
+  };
 
-  if (hazard?.type === "water") {
-    state.strokes += 1;
-    landingP = clamp(hazard.at - hazard.length / 2 - .025, holeProgress() + .025, .9);
-    nextRemaining = target * (1 - landingP);
-    side = 0;
-    nextLie = "rough";
-    message = "Bóng xuống nước · cộng 1 gậy phạt";
-  } else if (hazard?.type === "sand") {
-    nextLie = "sand";
-    message = "Bóng rơi vào bẫy cát";
-  } else if (overshot) {
-    nextLie = "rough";
-    side = clamp(side, -.38, .38);
-    message = "Bóng vượt cờ và dừng sau green";
-  }
-
-  animateBall({
-    fromRemaining: startRemaining,
-    toRemaining: nextRemaining,
-    fromSide: state.side,
-    toSide: side,
-    message,
-    callback: () => {
-      state.remainingYd = nextRemaining;
-      state.side = side;
-      state.lie = nextLie;
-      if (state.remainingYd <= 24 && !hazard) finishOnGreen();
-      else beginEstimate();
+  addVertex(WORLD.cx, WORLD.cy);
+  for (let ring = 1; ring <= rings; ring += 1) {
+    const radius = ring / rings;
+    for (let segment = 0; segment < segments; segment += 1) {
+      const angle = (segment / segments) * TAU;
+      const scale = boundaryScale(angle);
+      const x = WORLD.cx + Math.cos(angle) * 535 * scale * radius;
+      const y = WORLD.cy + Math.sin(angle) * 315 * scale * radius;
+      addVertex(x, y);
     }
+  }
+
+  for (let segment = 0; segment < segments; segment += 1) {
+    const current = 1 + segment;
+    const next = 1 + ((segment + 1) % segments);
+    indices.push(0, next, current);
+  }
+
+  for (let ring = 1; ring < rings; ring += 1) {
+    const innerStart = 1 + (ring - 1) * segments;
+    const outerStart = 1 + ring * segments;
+    for (let segment = 0; segment < segments; segment += 1) {
+      const nextSegment = (segment + 1) % segments;
+      const a = innerStart + segment;
+      const b = outerStart + segment;
+      const c = innerStart + nextSegment;
+      const d = outerStart + nextSegment;
+      indices.push(a, c, b, b, c, d);
+    }
+  }
+
+  const geometry = new THREE.BufferGeometry();
+  geometry.setAttribute("position", new THREE.Float32BufferAttribute(positions, 3));
+  geometry.setAttribute("color", new THREE.Float32BufferAttribute(colors, 3));
+  geometry.setIndex(indices);
+  geometry.computeVertexNormals();
+  geometry.computeBoundingSphere();
+  return geometry;
+}
+
+function rebuildTerrain() {
+  if (terrainGroup) {
+    scene.remove(terrainGroup);
+    disposeTree(terrainGroup);
+  }
+
+  terrainGroup = new THREE.Group();
+  const geometry = createTerrainGeometry();
+  const material = new THREE.MeshStandardMaterial({
+    vertexColors: true,
+    roughness: 0.93,
+    metalness: 0,
+    side: THREE.FrontSide
+  });
+  terrainMesh = new THREE.Mesh(geometry, material);
+  terrainMesh.receiveShadow = true;
+  terrainMesh.castShadow = true;
+  terrainGroup.add(terrainMesh);
+
+  terrainWire = new THREE.LineSegments(
+    new THREE.WireframeGeometry(geometry),
+    new THREE.LineBasicMaterial({ color: "#dff58a", transparent: true, opacity: 0.15, depthWrite: false })
+  );
+  terrainWire.position.y = 0.018;
+  terrainWire.visible = showTerrain;
+  terrainGroup.add(terrainWire);
+
+  slopeGroup = createSlopeArrows();
+  slopeGroup.visible = showTerrain;
+  terrainGroup.add(slopeGroup);
+
+  holeGroup = createHole();
+  terrainGroup.add(holeGroup);
+  scene.add(terrainGroup);
+}
+
+function createSlopeArrows() {
+  const group = new THREE.Group();
+  for (let y = 115; y <= 650; y += 105) {
+    for (let x = 115; x <= 1085; x += 125) {
+      if (!isInsideGreen(x, y, 42)) continue;
+      const slope = gradientAt(x, y);
+      const strength = magnitude(slope.x, slope.y);
+      if (strength < 0.00045) continue;
+      const horizontalX = -slope.x / strength;
+      const horizontalZ = -slope.y / strength;
+      const vertical = -strength * PIXELS_PER_METER * HEIGHT_SCALE;
+      const direction = new THREE.Vector3(horizontalX, vertical, horizontalZ).normalize();
+      const color = strength > 0.004 ? 0xf2a94a : 0xd7f05a;
+      const length = clamp(0.48 + strength * 85, 0.5, 1.05);
+      const origin = worldPoint(x, y, 0.12);
+      const arrow = new THREE.ArrowHelper(direction, origin, length, color, 0.20, 0.11);
+      arrow.traverse(child => {
+        if (!child.material) return;
+        child.material.transparent = true;
+        child.material.opacity = 0.82;
+        child.material.depthWrite = false;
+      });
+      group.add(arrow);
+    }
+  }
+  return group;
+}
+
+function createHole() {
+  const group = new THREE.Group();
+  const surface = worldPoint(course.hole.x, course.hole.y, 0.015);
+  group.position.copy(surface);
+
+  const cup = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.155, 0.155, 0.035, 32),
+    new THREE.MeshStandardMaterial({ color: "#050706", roughness: 1 })
+  );
+  cup.position.y = -0.015;
+  group.add(cup);
+
+  const rim = new THREE.Mesh(
+    new THREE.TorusGeometry(0.16, 0.012, 8, 32),
+    new THREE.MeshStandardMaterial({ color: "#e6ece3", roughness: 0.55 })
+  );
+  rim.rotation.x = Math.PI / 2;
+  rim.position.y = 0.01;
+  group.add(rim);
+
+  const pole = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.018, 0.018, 2.2, 12),
+    new THREE.MeshStandardMaterial({ color: "#f3f4e8", roughness: 0.42 })
+  );
+  pole.position.y = 1.1;
+  pole.castShadow = true;
+  group.add(pole);
+
+  const flagGeometry = new THREE.BufferGeometry();
+  flagGeometry.setAttribute("position", new THREE.Float32BufferAttribute([
+    0, 0, 0,
+    0.95, -0.25, 0,
+    0, -0.52, 0
+  ], 3));
+  flagGeometry.setIndex([0, 1, 2]);
+  flagGeometry.computeVertexNormals();
+  flagMesh = new THREE.Mesh(
+    flagGeometry,
+    new THREE.MeshStandardMaterial({ color: "#d7f05a", side: THREE.DoubleSide, roughness: 0.55 })
+  );
+  flagMesh.position.y = 2.18;
+  flagMesh.castShadow = true;
+  group.add(flagMesh);
+  return group;
+}
+
+function createBall() {
+  ballGroup = new THREE.Group();
+  const geometry = new THREE.SphereGeometry(BALL_RADIUS, 32, 22);
+  const material = new THREE.MeshPhysicalMaterial({
+    color: "#ffffff",
+    roughness: 0.27,
+    clearcoat: 0.7,
+    clearcoatRoughness: 0.3
+  });
+  ballMesh = new THREE.Mesh(geometry, material);
+  ballMesh.castShadow = true;
+  ballMesh.receiveShadow = true;
+  ballGroup.add(ballMesh);
+
+  const line = new THREE.Mesh(
+    new THREE.TorusGeometry(BALL_RADIUS * 0.72, 0.008, 5, 36, Math.PI * 0.7),
+    new THREE.MeshBasicMaterial({ color: "#263127" })
+  );
+  line.rotation.y = Math.PI / 2;
+  line.rotation.z = -0.35;
+  ballMesh.add(line);
+  scene.add(ballGroup);
+}
+
+function createGuideObjects() {
+  aimLine = new THREE.Line(
+    new THREE.BufferGeometry(),
+    new THREE.LineDashedMaterial({ color: "#ffffff", transparent: true, opacity: 0.9, dashSize: 0.20, gapSize: 0.13 })
+  );
+  predictionLine = new THREE.Line(
+    new THREE.BufferGeometry(),
+    new THREE.LineDashedMaterial({ color: "#d7f05a", transparent: true, opacity: 0.62, dashSize: 0.08, gapSize: 0.11 })
+  );
+  trailLine = new THREE.Line(
+    new THREE.BufferGeometry(),
+    new THREE.LineBasicMaterial({ color: "#f3b74a", transparent: true, opacity: 0.9 })
+  );
+  aimHandle = new THREE.Mesh(
+    new THREE.RingGeometry(0.13, 0.21, 28),
+    new THREE.MeshBasicMaterial({ color: "#d7f05a", side: THREE.DoubleSide, depthTest: false })
+  );
+  aimHandle.rotation.x = -Math.PI / 2;
+  aimHandle.renderOrder = 5;
+  scene.add(aimLine, predictionLine, trailLine, aimHandle);
+}
+
+function disposeTree(root) {
+  root.traverse(object => {
+    if (object.geometry) object.geometry.dispose();
+    if (!object.material) return;
+    const materials = Array.isArray(object.material) ? object.material : [object.material];
+    materials.forEach(material => material.dispose());
   });
 }
 
-function findHazard(progress, side) {
-  return hole().hazards.find(hazard => {
-    if (Math.abs(progress - hazard.at) > hazard.length / 2) return false;
-    if (hazard.side === 0) return true;
-    const hazardCenter = hazard.side * .7;
-    return Math.abs(side - hazardCenter) < hazard.width * .62;
-  });
+function updateLine(line, points) {
+  line.geometry.dispose();
+  line.geometry = new THREE.BufferGeometry().setFromPoints(points);
+  if (line.material.isLineDashedMaterial) line.computeLineDistances();
+  line.visible = points.length > 1;
 }
 
-function animateBall(config) {
-  state.animating = true;
-  els.driveButton.disabled = true;
-  els.swingButton.disabled = true;
-  showFlight(config.message);
-  state.animation = {...config, started: performance.now(), duration: 1300};
-  requestAnimationFrame(animationFrame);
-}
-
-function animationFrame(now) {
-  if (!state.animation) return;
-  const t = clamp((now - state.animation.started) / state.animation.duration, 0, 1);
-  draw(t);
-  if (t < 1) {
-    requestAnimationFrame(animationFrame);
-    return;
+function predictPath() {
+  const points = [];
+  let x = ball.x;
+  let y = ball.y;
+  const previewPower = power > 3 ? power : 58;
+  const speed = 110 + previewPower * 4.25;
+  let vx = Math.cos(aimAngle) * speed;
+  let vy = Math.sin(aimAngle) * speed;
+  const dt = 0.045;
+  for (let i = 0; i < 64; i += 1) {
+    const slope = gradientAt(x, y);
+    vx += -slope.x * course.slopeForce * dt;
+    vy += -slope.y * course.slopeForce * dt;
+    const velocity = magnitude(vx, vy);
+    if (velocity <= 2) break;
+    const slowed = Math.max(0, velocity - course.friction * dt);
+    vx = (vx / velocity) * slowed;
+    vy = (vy / velocity) * slowed;
+    x += vx * dt;
+    y += vy * dt;
+    if (!isInsideGreen(x, y, 8)) break;
+    if (i % 3 === 0) points.push(worldPoint(x, y, 0.09));
   }
-  const callback = state.animation.callback;
-  state.animation = null;
-  state.animating = false;
-  els.driveButton.disabled = false;
-  els.swingButton.disabled = false;
-  callback();
+  return points;
 }
 
-function beginEstimate() {
-  state.guessAttempts = 0;
-  els.distanceGuess.value = "";
-  els.guessFeedback.textContent = "";
-  els.guessFeedback.className = "guess-feedback";
-  setPhase("estimate");
-  updateUI();
-  draw();
-  setTimeout(() => els.distanceGuess.focus({preventScroll:true}), 120);
-}
-
-function finishOnGreen() {
-  state.lie = "green";
-  const putts = state.remainingYd <= 5 ? 1 : 2;
-  state.strokes += putts;
-  state.remainingYd = 0;
-  state.side = 0;
-  state.scores[state.holeIndex] = state.strokes;
-  saveState();
-  const relative = state.strokes - par();
-  const title = relative <= -2 ? "EAGLE" : relative === -1 ? "BIRDIE" : relative === 0 ? "PAR" : relative === 1 ? "BOGEY" : `+${relative}`;
-  const totalStrokes = state.scores.reduce((sum, value) => sum + (Number.isFinite(value) ? value : 0), 0);
-  const totalPar = state.scores.reduce((sum, value, index) => sum + (Number.isFinite(value) ? SCORECARD.par[index] : 0), 0);
-  els.resultTitle.textContent = title;
-  els.resultSummary.textContent = `${state.strokes} gậy · Par ${par()} · ${putts} putt`;
-  els.roundScore.textContent = formatScore(totalStrokes - totalPar);
-  els.nextHoleButton.innerHTML = state.holeIndex === 17 ? "XEM SCORECARD VÒNG ĐẤU" : "SANG HỐ TIẾP THEO <span>→</span>";
-  setPhase("complete");
-  updateUI();
-  draw();
-  showFlight(`Lên green · hoàn tất bằng ${putts} putt`);
-}
-
-function nextHole() {
-  if (state.holeIndex === 17) {
-    renderScorecard();
-    els.scorecardDialog.showModal();
-    return;
-  }
-  state.holeIndex += 1;
-  saveState();
-  resetHole();
-  document.querySelector(".control-deck").scrollTo({top:0,behavior:"smooth"});
-}
-
-function showFlight(message) {
-  els.flightMessage.textContent = message;
-  els.flightMessage.classList.add("show");
-  clearTimeout(showFlight.timer);
-  showFlight.timer = setTimeout(() => els.flightMessage.classList.remove("show"), 1700);
-}
-
-function showToast(message) {
-  els.toast.textContent = message;
-  els.toast.classList.add("show");
-  clearTimeout(showToast.timer);
-  showToast.timer = setTimeout(() => els.toast.classList.remove("show"), 2400);
-}
-
-function shake(element) {
-  element.animate([{transform:"translateX(0)"},{transform:"translateX(-5px)"},{transform:"translateX(5px)"},{transform:"translateX(0)"}], {duration:220});
-}
-
-function selectTee(tee) {
-  if (state.phase !== "tee") return;
-  state.tee = tee;
-  state.remainingYd = targetDistanceYd();
-  saveState();
-  updateDriveLabel();
-  updateUI();
-  draw();
-}
-
-function selectUnit(unit) {
-  if (state.phase !== "tee") return;
-  state.unit = unit;
-  saveState();
-  updateUI();
-  renderScorecard();
-  draw();
-}
-
-function updateDriveLabel() {
-  const distance = targetDistanceYd();
-  els.driveClubLabel.textContent = distance < 175 ? "Bằng 7 Iron" : distance < 230 ? "Bằng gỗ 3" : "Bằng Driver";
-}
-
-function renderScorecard() {
-  const header = `<tr><th>HỐ</th>${HOLES.map((_, i) => `<th class="${i === state.holeIndex ? "current-hole" : ""}">${i + 1}</th>`).join("")}</tr>`;
-  const rows = ["black","blue","white","red"].map(tee => `<tr><td>${teeLabel(tee).toUpperCase()}</td>${SCORECARD[tee].map(value => `<td>${displayed(value)}</td>`).join("")}</tr>`).join("");
-  const pars = `<tr><td>PAR</td>${SCORECARD.par.map(value => `<td>${value}</td>`).join("")}</tr>`;
-  const player = `<tr class="player-row"><td>BẠN</td>${state.scores.map(value => `<td>${Number.isFinite(value) ? value : "·"}</td>`).join("")}</tr>`;
-  els.scorecardTable.innerHTML = header + rows + pars + player;
-  const total = state.scores.reduce((sum, value) => sum + (Number.isFinite(value) ? value : 0), 0);
-  const playedPar = state.scores.reduce((sum, value, index) => sum + (Number.isFinite(value) ? SCORECARD.par[index] : 0), 0);
-  els.scorecardTotal.textContent = total;
-  els.scorecardVsPar.textContent = formatScore(total - playedPar);
-}
-
-function setupEvents() {
-  document.querySelectorAll(".tee-option").forEach(button => button.addEventListener("click", () => selectTee(button.dataset.tee)));
-  document.querySelectorAll(".unit-toggle button").forEach(button => button.addEventListener("click", () => selectUnit(button.dataset.unit)));
-  els.driveButton.addEventListener("click", startDrive);
-  els.checkGuessButton.addEventListener("click", checkGuess);
-  els.distanceGuess.addEventListener("keydown", event => { if (event.key === "Enter") checkGuess(); });
-  els.swingButton.addEventListener("click", swingClub);
-  els.nextHoleButton.addEventListener("click", nextHole);
-  els.scorecardButton.addEventListener("click", () => { renderScorecard(); els.scorecardDialog.showModal(); });
-  els.helpButton.addEventListener("click", () => els.helpDialog.showModal());
-  els.closeHelpButton.addEventListener("click", () => els.helpDialog.close());
-  document.querySelectorAll("[data-close-dialog]").forEach(button => button.addEventListener("click", () => button.closest("dialog").close()));
-  document.querySelectorAll("dialog").forEach(dialog => dialog.addEventListener("click", event => {
-    const rect = dialog.getBoundingClientRect();
-    if (event.clientX < rect.left || event.clientX > rect.right || event.clientY < rect.top || event.clientY > rect.bottom) dialog.close();
-  }));
-  els.brandHome.addEventListener("click", event => {
-    event.preventDefault();
-    state.holeIndex = 0;
-    saveState();
-    resetHole();
-  });
-  window.addEventListener("resize", resizeCanvas);
-}
-
-function resizeCanvas() {
-  const rect = canvas.getBoundingClientRect();
-  const dpr = Math.min(window.devicePixelRatio || 1, 2);
-  const width = Math.max(1, Math.round(rect.width * dpr));
-  const height = Math.max(1, Math.round(rect.height * dpr));
-  if (canvas.width !== width || canvas.height !== height) {
-    canvas.width = width;
-    canvas.height = height;
-  }
-  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-  draw();
-}
-
-function coursePoint(progress, side = 0) {
-  const rect = canvas.getBoundingClientRect();
-  const w = rect.width;
-  const h = rect.height;
-  const p = clamp(progress, 0, 1);
-  const y = h * (.9 - p * .77);
-  const perspective = .35 + (1 - p) * .65;
-  const center = w * (.5 + hole().bend * Math.sin(Math.PI * p) + hole().wave * Math.sin(Math.PI * 2 * p + state.holeIndex));
-  const halfWidth = Math.min(w * .22, 185) * perspective;
-  return {x: center + side * halfWidth, y, halfWidth, perspective};
-}
-
-function draw(animationT = null) {
-  const rect = canvas.getBoundingClientRect();
-  const w = rect.width;
-  const h = rect.height;
-  if (!w || !h) return;
-  ctx.clearRect(0, 0, w, h);
-  drawRough(w, h);
-  drawFairway();
-  drawTrees(w, h);
-  hole().hazards.forEach(drawHazard);
-  drawGreen();
-  drawStakes();
-  drawTee();
-  drawBall(animationT);
-  drawVignette(w, h);
-}
-
-function drawRough(w, h) {
-  const gradient = ctx.createLinearGradient(0, 0, 0, h);
-  gradient.addColorStop(0, "#204b30");
-  gradient.addColorStop(1, "#0f3423");
-  ctx.fillStyle = gradient;
-  ctx.fillRect(0, 0, w, h);
-  ctx.globalAlpha = .09;
-  for (let i = 0; i < 150; i++) {
-    const x = seeded(i + 90) * w;
-    const y = seeded(i + 300) * h;
-    ctx.fillStyle = i % 2 ? "#b2d57b" : "#061b12";
-    ctx.fillRect(x, y, 1.2, 5 + seeded(i + 520) * 8);
-  }
-  ctx.globalAlpha = 1;
-}
-
-function fairwayPolygon(extra = 0) {
-  const left = [], right = [];
-  for (let i = 0; i <= 34; i++) {
-    const p = i / 34;
-    left.push(coursePoint(p, -1 - extra));
-    right.unshift(coursePoint(p, 1 + extra));
-  }
-  return [...left, ...right];
-}
-
-function tracePolygon(points) {
-  ctx.beginPath();
-  points.forEach((point, index) => index ? ctx.lineTo(point.x, point.y) : ctx.moveTo(point.x, point.y));
-  ctx.closePath();
-}
-
-function drawFairway() {
-  tracePolygon(fairwayPolygon(.11));
-  ctx.fillStyle = "#2f6d40";
-  ctx.fill();
-  tracePolygon(fairwayPolygon());
-  const gradient = ctx.createLinearGradient(0, coursePoint(1).y, 0, coursePoint(0).y);
-  gradient.addColorStop(0, "#69a955");
-  gradient.addColorStop(1, "#74b95b");
-  ctx.fillStyle = gradient;
-  ctx.fill();
-  ctx.save();
-  tracePolygon(fairwayPolygon());
-  ctx.clip();
-  for (let i = 0; i < 12; i++) {
-    const top = coursePoint(i / 12).y;
-    const bottom = coursePoint((i + 1) / 12).y;
-    ctx.fillStyle = i % 2 ? "rgba(255,255,255,.035)" : "rgba(0,0,0,.035)";
-    ctx.fillRect(0, Math.min(top,bottom), canvas.clientWidth, Math.abs(bottom-top));
-  }
-  ctx.restore();
-}
-
-function drawTrees(w, h) {
-  for (let i = 0; i < 28; i++) {
-    const p = .04 + seeded(i + 700) * .92;
-    const side = i % 2 ? -1.48 - seeded(i + 800) * .55 : 1.48 + seeded(i + 800) * .55;
-    const point = coursePoint(p, side);
-    if (point.x < -20 || point.x > w + 20 || point.y < 0 || point.y > h) continue;
-    const size = 5 + point.perspective * 12;
-    ctx.fillStyle = "rgba(0,0,0,.16)";
-    ctx.beginPath(); ctx.ellipse(point.x + 3, point.y + 4, size * .8, size * .35, .3, 0, Math.PI * 2); ctx.fill();
-    ctx.fillStyle = i % 3 ? "#17472b" : "#205936";
-    ctx.beginPath(); ctx.arc(point.x, point.y - size * .35, size * .65, 0, Math.PI * 2); ctx.fill();
-    ctx.beginPath(); ctx.arc(point.x - size * .45, point.y, size * .52, 0, Math.PI * 2); ctx.fill();
-    ctx.beginPath(); ctx.arc(point.x + size * .45, point.y, size * .52, 0, Math.PI * 2); ctx.fill();
-  }
-}
-
-function drawHazard(hazard) {
-  const center = coursePoint(hazard.at, hazard.side * .84);
-  const fw = center.halfWidth;
-  const rx = hazard.side === 0 ? fw * 1.3 : fw * (hazard.width || .5);
-  const ry = Math.max(9, canvas.clientHeight * hazard.length * .24);
-  ctx.save();
-  ctx.translate(center.x, center.y);
-  ctx.rotate((hazard.side || .2) * .2);
-  ctx.beginPath();
-  for (let i = 0; i <= 24; i++) {
-    const angle = i / 24 * Math.PI * 2;
-    const wobble = .88 + Math.sin(angle * 5 + hazard.at * 30) * .09;
-    const x = Math.cos(angle) * rx * wobble;
-    const y = Math.sin(angle) * ry * (1 + Math.cos(angle * 3) * .08);
-    i ? ctx.lineTo(x,y) : ctx.moveTo(x,y);
-  }
-  ctx.closePath();
-  if (hazard.type === "water") {
-    const water = ctx.createLinearGradient(0,-ry,0,ry);
-    water.addColorStop(0,"#67bfd2"); water.addColorStop(1,"#2b87ad");
-    ctx.fillStyle = water; ctx.fill();
-    ctx.strokeStyle = "rgba(210,246,250,.35)"; ctx.lineWidth = 1;
-    for (let y = -ry * .55; y < ry * .7; y += 7) { ctx.beginPath(); ctx.moveTo(-rx*.6,y); ctx.lineTo(rx*.55,y+1); ctx.stroke(); }
+function refreshGuides() {
+  if (!aimLine) return;
+  if (ball.rolling || ball.sunk) {
+    aimLine.visible = false;
+    predictionLine.visible = false;
+    aimHandle.visible = false;
   } else {
-    const sand = ctx.createRadialGradient(-rx*.2,-ry*.3,2,0,0,rx);
-    sand.addColorStop(0,"#f2dfaa"); sand.addColorStop(1,"#d5b76d");
-    ctx.fillStyle = sand; ctx.fill();
-    ctx.strokeStyle = "rgba(116,86,35,.25)"; ctx.lineWidth = 1; ctx.stroke();
+    const guideLength = 170;
+    const endX = ball.x + Math.cos(aimAngle) * guideLength;
+    const endY = ball.y + Math.sin(aimAngle) * guideLength;
+    updateLine(aimLine, [worldPoint(ball.x, ball.y, BALL_RADIUS + 0.04), worldPoint(endX, endY, 0.10)]);
+    const prediction = [worldPoint(ball.x, ball.y, 0.09), ...predictPath()];
+    updateLine(predictionLine, prediction);
+    aimHandle.position.copy(worldPoint(endX, endY, 0.11));
+    aimHandle.visible = true;
   }
-  ctx.restore();
+
+  const trail = ball.trail.map(point => worldPoint(point.x, point.y, 0.08));
+  updateLine(trailLine, trail);
 }
 
-function drawGreen() {
-  const point = coursePoint(1);
-  const rx = Math.max(32, point.halfWidth * 1.55);
-  const ry = Math.max(15, canvas.clientHeight * .045);
-  ctx.fillStyle = "#91d56a";
-  ctx.beginPath(); ctx.ellipse(point.x, point.y, rx, ry, hole().bend * .6, 0, Math.PI * 2); ctx.fill();
-  ctx.strokeStyle = "rgba(225,255,208,.34)"; ctx.lineWidth = 2; ctx.stroke();
-  const flag = FLAG_INFO[hole().flag];
-  const flagX = point.x + flag.offset * .35;
-  const flagY = point.y - 3;
-  ctx.fillStyle = "rgba(0,0,0,.18)";
-  ctx.beginPath(); ctx.ellipse(flagX + 5, flagY + 6, 12, 3, .2, 0, Math.PI * 2); ctx.fill();
-  ctx.strokeStyle = "#f6f4df"; ctx.lineWidth = 2;
-  ctx.beginPath(); ctx.moveTo(flagX, flagY + 4); ctx.lineTo(flagX, flagY - 39); ctx.stroke();
-  ctx.fillStyle = flag.color;
-  ctx.beginPath(); ctx.moveTo(flagX + 1, flagY - 38); ctx.lineTo(flagX + 24, flagY - 32); ctx.lineTo(flagX + 1, flagY - 25); ctx.closePath(); ctx.fill();
-  if (hole().flag === "white") { ctx.strokeStyle = "#bcc7c0"; ctx.lineWidth = 1; ctx.stroke(); }
-  ctx.fillStyle = "#264b32"; ctx.beginPath(); ctx.ellipse(flagX, flagY+4, 4, 1.8, 0, 0, Math.PI*2); ctx.fill();
+function syncBallMesh(dt = 0) {
+  if (!ballGroup) return;
+  const point = worldPoint(ball.x, ball.y, BALL_RADIUS);
+  const sinkOffset = ball.sunk ? sinkProgress * 0.43 : 0;
+  ballGroup.position.set(point.x, point.y - sinkOffset, point.z);
+  const scale = ball.sunk ? 1 - sinkProgress * 0.42 : 1;
+  ballGroup.scale.setScalar(Math.max(0.58, scale));
+  ballGroup.visible = true;
+
+  if (ball.rolling && dt > 0) {
+    const speed = magnitude(ball.vx, ball.vy);
+    if (speed > 0.1) {
+      const axis = new THREE.Vector3(ball.vy, 0, -ball.vx).normalize();
+      ballMesh.rotateOnWorldAxis(axis, speed * dt / PIXELS_PER_METER / BALL_RADIUS);
+    }
+  }
 }
 
-function drawStakes() {
-  const stakes = [
-    {distance:250,color:"#222725"},{distance:200,color:"#277bc0"},{distance:150,color:"#ffffff"},{distance:100,color:"#da4139"}
-  ];
-  const total = centerDistanceYd();
-  stakes.forEach(stake => {
-    if (stake.distance >= total - 15) return;
-    const p = 1 - stake.distance / total;
-    [-1.12,1.12].forEach(side => {
-      const point = coursePoint(p, side);
-      const height = 12 + point.perspective * 12;
-      ctx.strokeStyle = "rgba(0,0,0,.25)"; ctx.lineWidth = 4;
-      ctx.beginPath(); ctx.moveTo(point.x+1,point.y+2); ctx.lineTo(point.x+1,point.y-height); ctx.stroke();
-      ctx.strokeStyle = stake.color; ctx.lineWidth = 3;
-      ctx.beginPath(); ctx.moveTo(point.x,point.y); ctx.lineTo(point.x,point.y-height); ctx.stroke();
+function resizeRenderer() {
+  if (!renderer) return;
+  const rect = canvas.getBoundingClientRect();
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, rect.width < 680 ? 1.35 : 1.75));
+  renderer.setSize(rect.width, rect.height, false);
+  camera.aspect = rect.width / Math.max(1, rect.height);
+  camera.updateProjectionMatrix();
+}
+
+function setCameraView(index, focusBall = false) {
+  if (!camera || !controls) return;
+  cameraViewIndex = ((index % 3) + 3) % 3;
+  const target = focusBall ? worldPoint(ball.x, ball.y, 0) : worldPoint(WORLD.cx, WORLD.cy, 0);
+  const rect = canvas.getBoundingClientRect();
+  const aspect = rect.width / Math.max(1, rect.height);
+  const portraitScale = clamp(0.86 / Math.max(aspect, 0.35), 1, 1.72);
+  let offset;
+  if (cameraViewIndex === 1) {
+    offset = new THREE.Vector3(-Math.cos(aimAngle) * 5.8, 3.6, -Math.sin(aimAngle) * 5.8);
+  } else if (cameraViewIndex === 2) {
+    offset = new THREE.Vector3(0.01, 27 * portraitScale, 0.01);
+  } else {
+    offset = new THREE.Vector3(0, 15.5 * portraitScale, 18.5 * portraitScale);
+  }
+  controls.target.copy(target);
+  camera.position.copy(target).add(offset);
+  camera.lookAt(target);
+  controls.update();
+  const labels = ["Toàn cảnh 3D", "Góc sát mặt green", "Góc nhìn từ trên"];
+  showToast(labels[cameraViewIndex], "Kéo để xoay · Cuộn/chụm để zoom");
+}
+
+function focusCameraOnBall() {
+  const target = worldPoint(ball.x, ball.y, 0);
+  const offset = camera.position.clone().sub(controls.target);
+  controls.target.copy(target);
+  camera.position.copy(target).add(offset);
+  controls.update();
+  showToast("Đã về vị trí bóng", "Kéo để xoay quanh bóng");
+}
+
+function raycastGreen(clientX, clientY) {
+  const rect = canvas.getBoundingClientRect();
+  pointerNdc.x = ((clientX - rect.left) / rect.width) * 2 - 1;
+  pointerNdc.y = -((clientY - rect.top) / rect.height) * 2 + 1;
+  raycaster.setFromCamera(pointerNdc, camera);
+  const hit = raycaster.intersectObject(terrainMesh, false)[0];
+  if (!hit) return null;
+  return {
+    x: hit.point.x * PIXELS_PER_METER + WORLD.cx,
+    y: hit.point.z * PIXELS_PER_METER + WORLD.cy,
+    point: hit.point
+  };
+}
+
+function findBoundaryDrop(insidePoint, outsidePoint) {
+  const inset = BALL_RADIUS * PIXELS_PER_METER + 4;
+  let inside = insidePoint && isInsideGreen(insidePoint.x, insidePoint.y, inset)
+    ? { x: insidePoint.x, y: insidePoint.y }
+    : { x: WORLD.cx, y: WORLD.cy };
+  let outside = { x: outsidePoint.x, y: outsidePoint.y };
+
+  for (let i = 0; i < 24; i += 1) {
+    const middle = { x: (inside.x + outside.x) / 2, y: (inside.y + outside.y) / 2 };
+    if (isInsideGreen(middle.x, middle.y, inset)) inside = middle;
+    else outside = middle;
+  }
+  return inside;
+}
+
+function updatePhysics(dt) {
+  if (!ball.rolling || ball.sunk) return;
+  const slope = gradientAt(ball.x, ball.y);
+  ball.vx += -slope.x * course.slopeForce * dt;
+  ball.vy += -slope.y * course.slopeForce * dt;
+
+  const speed = magnitude(ball.vx, ball.vy);
+  const slopeAcceleration = magnitude(slope.x * course.slopeForce, slope.y * course.slopeForce);
+  if (speed > 0) {
+    const nextSpeed = Math.max(0, speed - course.friction * dt);
+    ball.vx = (ball.vx / speed) * nextSpeed;
+    ball.vy = (ball.vy / speed) * nextSpeed;
+  }
+
+  ball.x += ball.vx * dt;
+  ball.y += ball.vy * dt;
+  if (isInsideGreen(ball.x, ball.y, BALL_RADIUS * PIXELS_PER_METER + 4)) {
+    lastInsidePosition = { x: ball.x, y: ball.y };
+  }
+  traceAccumulator += dt;
+  if (traceAccumulator > 0.045) {
+    ball.trail.push({ x: ball.x, y: ball.y });
+    traceAccumulator = 0;
+    refreshGuides();
+  }
+
+  const holeDistance = magnitude(ball.x - course.hole.x, ball.y - course.hole.y);
+  const currentSpeed = magnitude(ball.vx, ball.vy);
+  if (holeDistance < 13 && currentSpeed < 145) {
+    sinkBall();
+    return;
+  }
+
+  if (!isInsideGreen(ball.x, ball.y, -18)) {
+    const dropPosition = findBoundaryDrop(lastInsidePosition || previousSafePosition, { x: ball.x, y: ball.y });
+    ball.rolling = false;
+    ball.vx = 0;
+    ball.vy = 0;
+    ui.puttButton.disabled = true;
+    clearTimeout(outOfBoundsTimer);
+    outOfBoundsTimer = setTimeout(() => {
+      ball.x = dropPosition.x;
+      ball.y = dropPosition.y;
+      ball.trail.push({ x: dropPosition.x, y: dropPosition.y });
+      lastInsidePosition = { ...dropPosition };
+      strokeCount += 1;
+      ui.strokeCount.textContent = strokeCount;
+      ui.puttButton.disabled = false;
+      updateDistance();
+      refreshGuides();
+      syncBallMesh();
+      setStatus(`Bóng đặt tại mép green · Cú tiếp theo là gậy ${strokeCount + 1}`, false);
+      showToast("Bóng ra ngoài", "Đặt tại điểm rời green · +1 gậy phạt");
+    }, 450);
+    return;
+  }
+
+  if (currentSpeed < 3.2 && slopeAcceleration < course.friction * 0.95) stopBall();
+}
+
+function stopBall() {
+  ball.rolling = false;
+  ball.vx = 0;
+  ball.vy = 0;
+  ui.puttButton.disabled = false;
+  updateDistance();
+  refreshGuides();
+  setStatus(roundMode
+    ? `Vị trí cú tiếp theo · Chuẩn bị gậy ${strokeCount + 1}`
+    : "Bóng đã dừng · Chạm green để căn cú tiếp theo", false);
+}
+
+function sinkBall() {
+  ball.x = course.hole.x;
+  ball.y = course.hole.y;
+  ball.vx = 0;
+  ball.vy = 0;
+  ball.rolling = false;
+  ball.sunk = true;
+  ball.trail.push({ x: ball.x, y: ball.y });
+  sinkProgress = 0;
+  ui.puttButton.disabled = true;
+  ui.distanceValue.textContent = "0.0";
+  setStatus("Bóng đã vào lỗ · Đang ghi nhận điểm", false);
+  refreshGuides();
+  clearTimeout(celebrationTimer);
+  celebrationTimer = setTimeout(() => showCelebration(), 720);
+}
+
+function hitBall() {
+  if (ball.rolling || ball.sunk || power < 2) {
+    resetPower();
+    return;
+  }
+  const speed = 110 + power * 4.25;
+  previousSafePosition = { x: ball.x, y: ball.y, strokeCount };
+  lastInsidePosition = { x: ball.x, y: ball.y };
+  ball.vx = Math.cos(aimAngle) * speed;
+  ball.vy = Math.sin(aimAngle) * speed;
+  ball.rolling = true;
+  ball.trail = [{ x: ball.x, y: ball.y }];
+  strokeCount += 1;
+  ui.strokeCount.textContent = strokeCount;
+  ui.puttButton.disabled = true;
+  setStatus("Bóng đang lăn trên địa hình 3D...", true);
+  resetPower();
+  refreshGuides();
+}
+
+function retryLastShot() {
+  if (roundMode) {
+    loadCourse(courseIndex);
+    showToast("Bắt đầu lại green", "Số gậy được tính lại từ 0");
+    return;
+  }
+  clearTimeout(celebrationTimer);
+  clearTimeout(outOfBoundsTimer);
+  hideCelebration();
+  const target = previousSafePosition || { x: course.ball.x, y: course.ball.y, strokeCount: 0 };
+  ball.x = target.x;
+  ball.y = target.y;
+  ball.vx = 0;
+  ball.vy = 0;
+  ball.rolling = false;
+  ball.sunk = false;
+  ball.trail = [];
+  sinkProgress = 0;
+  strokeCount = target.strokeCount;
+  previousSafePosition = null;
+  lastInsidePosition = { x: ball.x, y: ball.y };
+  ui.strokeCount.textContent = strokeCount;
+  ui.puttButton.disabled = false;
+  resetPower();
+  aimAtHole();
+  updateDistance();
+  refreshGuides();
+  syncBallMesh();
+  setStatus("Đã đưa bóng về trước cú đánh", false);
+  showToast("Sẵn sàng đánh lại", "Lượt đánh vừa rồi đã được hoàn tác");
+}
+
+function startCharge(event) {
+  if (event) event.preventDefault();
+  if (ball.rolling || ball.sunk || charging) return;
+  charging = true;
+  chargeStartedAt = performance.now();
+  ui.puttButton.classList.add("charging");
+  ui.statusText.textContent = "Thả đúng lực bạn muốn";
+}
+
+function releaseCharge(event) {
+  if (event) event.preventDefault();
+  if (!charging) return;
+  charging = false;
+  ui.puttButton.classList.remove("charging");
+  hitBall();
+}
+
+function updateCharge(now) {
+  if (!charging) return;
+  const cycle = ((now - chargeStartedAt) % 2400) / 1200;
+  const t = cycle <= 1 ? cycle : 2 - cycle;
+  power = 5 + t * 95;
+  updatePowerUI();
+  refreshGuides();
+}
+
+function updatePowerUI() {
+  const rounded = Math.round(power);
+  ui.powerValue.textContent = `${rounded}%`;
+  ui.powerFill.style.width = `${power}%`;
+  ui.powerMarker.style.left = `${power}%`;
+}
+
+function resetPower() {
+  charging = false;
+  power = 0;
+  ui.puttButton.classList.remove("charging");
+  updatePowerUI();
+}
+
+function setAim(angle) {
+  aimAngle = Math.atan2(Math.sin(angle), Math.cos(angle));
+  let degrees = Math.round(aimAngle * 180 / Math.PI);
+  if (Object.is(degrees, -0)) degrees = 0;
+  ui.angleValue.textContent = `${degrees > 0 ? "+" : ""}${degrees}°`;
+  refreshGuides();
+}
+
+function aimAtHole() {
+  setAim(Math.atan2(course.hole.y - ball.y, course.hole.x - ball.x));
+}
+
+function setStatus(text, rolling) {
+  ui.statusText.textContent = text;
+  ui.statusPill.classList.toggle("rolling", Boolean(rolling));
+}
+
+function syncRoundModeUI() {
+  ui.roundModeButton.classList.toggle("active", roundMode);
+  ui.roundModeButton.setAttribute("aria-pressed", String(roundMode));
+  ui.roundModeLabel.textContent = roundMode ? "Tính gậy: BẬT" : "Luyện tự do";
+  ui.placeBallButton.classList.toggle("locked", roundMode);
+  ui.retryButton.title = roundMode ? "Bắt đầu lại green và tính lại từ 0" : "Hoàn tác cú đánh gần nhất";
+  ui.placeBallButton.title = roundMode ? "Tắt chế độ tính gậy để đặt bóng tự do" : "Đặt bóng tại vị trí luyện tập";
+}
+
+function setRoundMode(enabled) {
+  roundMode = Boolean(enabled);
+  syncRoundModeUI();
+  loadCourse(courseIndex);
+  showToast(
+    roundMode ? "Đã bật chơi tính gậy" : "Đã chuyển sang luyện tự do",
+    roundMode ? "Mọi cú đánh và gậy phạt được tính từ đầu green" : "Có thể đặt bóng và hoàn tác từng cú"
+  );
+}
+
+function setPlacementMode(enabled) {
+  placementMode = Boolean(enabled) && !roundMode && !ball.rolling && !ball.sunk;
+  ui.placeBallButton.classList.toggle("active", placementMode);
+  ui.placeBallButton.setAttribute("aria-pressed", String(placementMode));
+  canvas.classList.toggle("placing", placementMode);
+  if (controls) controls.enabled = !placementMode;
+  if (placementMode) setStatus("Chạm một vị trí trên mô hình để đặt bóng", false);
+  else if (!ball.rolling && !ball.sunk) {
+    setStatus(roundMode ? `Gậy ${strokeCount + 1} · Chạm green để căn hướng` : "Kéo để xoay · Chạm green để căn hướng", false);
+  }
+}
+
+function placeBallAt(x, y) {
+  if (!isInsideGreen(x, y, 22)) {
+    showToast("Không thể đặt bóng", "Hãy chọn vị trí bên trong green");
+    return false;
+  }
+  ball.x = x;
+  ball.y = y;
+  ball.vx = 0;
+  ball.vy = 0;
+  ball.rolling = false;
+  ball.sunk = false;
+  ball.trail = [];
+  sinkProgress = 0;
+  previousSafePosition = null;
+  lastInsidePosition = { x, y };
+  ui.puttButton.disabled = false;
+  resetPower();
+  aimAtHole();
+  updateDistance();
+  refreshGuides();
+  syncBallMesh();
+  setPlacementMode(false);
+  showToast("Đã đặt lại bóng", `${ui.distanceValue.textContent} m tới cờ`);
+  return true;
+}
+
+function updateDistance() {
+  const distance = magnitude(course.hole.x - ball.x, course.hole.y - ball.y) / PIXELS_PER_METER;
+  ui.distanceValue.textContent = distance.toFixed(1);
+}
+
+function showToast(title, detail, duration = 1700) {
+  clearTimeout(toastTimer);
+  ui.toast.innerHTML = `${title}<small>${detail}</small>`;
+  ui.toast.classList.add("show");
+  toastTimer = setTimeout(() => ui.toast.classList.remove("show"), duration);
+}
+
+function loadScores() {
+  try {
+    const stored = JSON.parse(localStorage.getItem(SCORE_STORAGE_KEY) || "{}");
+    return stored && typeof stored === "object" ? stored : {};
+  } catch (error) {
+    console.warn("Không thể đọc điểm đã lưu.", error);
+    return {};
+  }
+}
+
+function saveScores() {
+  try {
+    localStorage.setItem(SCORE_STORAGE_KEY, JSON.stringify(bestScores));
+  } catch (error) {
+    console.warn("Không thể lưu điểm.", error);
+  }
+}
+
+function totalScore() {
+  return Object.values(bestScores).reduce((sum, value) => sum + (Number(value) || 0), 0);
+}
+
+function calculateGreenScore() {
+  return Math.max(100, 900 + course.difficulty * 110 - Math.max(0, strokeCount - 1) * 170);
+}
+
+function updateScoreUI() {
+  ui.scoreValue.textContent = totalScore().toLocaleString("vi-VN");
+}
+
+function showCelebration() {
+  const earned = roundMode ? calculateGreenScore() : 0;
+  const previousBest = Number(bestScores[course.id]) || 0;
+  const isNewBest = roundMode && earned > previousBest;
+  if (isNewBest) {
+    bestScores[course.id] = earned;
+    saveScores();
+  }
+  updateScoreUI();
+
+  ui.celebrationTitle.textContent = strokeCount === 1 ? "Hole in one!" : strokeCount <= 2 ? "Cú putt xuất sắc!" : "Bóng đã vào lỗ!";
+  ui.celebrationMessage.textContent = roundMode
+    ? `${course.name} · ${isNewBest ? "Kỷ lục mới đã được lưu" : "Green đã hoàn thành"}`
+    : `${course.name} · Hoàn thành luyện tập, điểm không được lưu`;
+  ui.celebrationScore.textContent = `+${earned.toLocaleString("vi-VN")}`;
+  ui.celebrationStrokes.textContent = String(strokeCount);
+  ui.celebrationTotal.textContent = totalScore().toLocaleString("vi-VN");
+  ui.celebration.hidden = false;
+  requestAnimationFrame(() => ui.celebration.classList.add("show"));
+  setStatus(roundMode ? "Hoàn thành green · Điểm và số gậy đã được ghi nhận" : "Hoàn thành green luyện tập", false);
+  playSuccessSound();
+}
+
+function hideCelebration() {
+  ui.celebration.classList.remove("show");
+  ui.celebration.hidden = true;
+}
+
+function playSuccessSound() {
+  try {
+    const AudioContext = window.AudioContext || window.webkitAudioContext;
+    if (!AudioContext) return;
+    const audio = new AudioContext();
+    const notes = [523.25, 659.25, 783.99];
+    notes.forEach((frequency, index) => {
+      const oscillator = audio.createOscillator();
+      const gain = audio.createGain();
+      oscillator.type = "sine";
+      oscillator.frequency.value = frequency;
+      const start = audio.currentTime + index * 0.12;
+      gain.gain.setValueAtTime(0.0001, start);
+      gain.gain.exponentialRampToValueAtTime(0.11, start + 0.02);
+      gain.gain.exponentialRampToValueAtTime(0.0001, start + 0.32);
+      oscillator.connect(gain).connect(audio.destination);
+      oscillator.start(start);
+      oscillator.stop(start + 0.34);
+    });
+  } catch (error) {
+    console.warn("Không thể phát âm thanh chúc mừng.", error);
+  }
+}
+
+function populateCourseSelect() {
+  const fragment = document.createDocumentFragment();
+  courses.forEach(item => {
+    const option = document.createElement("option");
+    option.value = item.id;
+    option.textContent = `${item.number} · ${item.name}`;
+    fragment.appendChild(option);
+  });
+  ui.courseSelect.replaceChildren(fragment);
+}
+
+function loadCourse(index) {
+  clearTimeout(celebrationTimer);
+  clearTimeout(outOfBoundsTimer);
+  hideCelebration();
+  courseIndex = (index + courses.length) % courses.length;
+  course = courses[courseIndex];
+  ball.x = course.ball.x;
+  ball.y = course.ball.y;
+  ball.vx = 0;
+  ball.vy = 0;
+  ball.rolling = false;
+  ball.sunk = false;
+  ball.trail = [];
+  sinkProgress = 0;
+  previousSafePosition = null;
+  lastInsidePosition = { x: ball.x, y: ball.y };
+  setPlacementMode(false);
+  strokeCount = 0;
+  ui.strokeCount.textContent = "0";
+  ui.stimpValue.textContent = course.stimp.toFixed(1);
+  ui.greenNumber.textContent = `GREEN ${course.number}`;
+  ui.greenName.textContent = course.name;
+  ui.greenDescription.textContent = course.detail;
+  ui.courseSelect.value = course.id;
+  ui.difficulty.forEach((node, i) => node.classList.toggle("active", i < course.difficulty));
+  ui.puttButton.disabled = false;
+  resetPower();
+  rebuildTerrain();
+  aimAtHole();
+  updateDistance();
+  updateScoreUI();
+  syncRoundModeUI();
+  syncBallMesh();
+  refreshGuides();
+  setCameraView(0);
+  setStatus(roundMode ? "Gậy 1 · Chạm green để căn hướng" : "Kéo để xoay · Chạm green để căn hướng", false);
+  showToast(course.name, course.detail);
+}
+
+function onScenePointerDown(event) {
+  if (!event.isPrimary || event.button !== 0) return;
+  pointerStart = { id: event.pointerId, x: event.clientX, y: event.clientY };
+}
+
+function onScenePointerUp(event) {
+  if (!pointerStart || pointerStart.id !== event.pointerId) return;
+  const movement = magnitude(event.clientX - pointerStart.x, event.clientY - pointerStart.y);
+  pointerStart = null;
+  if (movement > 8 || ball.rolling || ball.sunk) return;
+  const hit = raycastGreen(event.clientX, event.clientY);
+  if (!hit) return;
+  if (placementMode) {
+    placeBallAt(hit.x, hit.y);
+    return;
+  }
+  if (magnitude(hit.x - ball.x, hit.y - ball.y) < 16) return;
+  setAim(Math.atan2(hit.y - ball.y, hit.x - ball.x));
+  setStatus("Đã cập nhật hướng đánh trên mô hình 3D", false);
+}
+
+function setHelpTab(device, focusTab = false) {
+  const isMobile = device === "mobile";
+  const activeTab = isMobile ? ui.helpMobileTab : ui.helpDesktopTab;
+  const inactiveTab = isMobile ? ui.helpDesktopTab : ui.helpMobileTab;
+
+  activeTab.classList.add("active");
+  activeTab.setAttribute("aria-selected", "true");
+  activeTab.tabIndex = 0;
+  inactiveTab.classList.remove("active");
+  inactiveTab.setAttribute("aria-selected", "false");
+  inactiveTab.tabIndex = -1;
+
+  ui.mobileGuide.hidden = !isMobile;
+  ui.desktopGuide.hidden = isMobile;
+  ui.mobileGuide.classList.toggle("active", isMobile);
+  ui.desktopGuide.classList.toggle("active", !isMobile);
+
+  if (focusTab) activeTab.focus();
+}
+
+function openHelp() {
+  const mobileControls = window.matchMedia("(max-width: 680px), (pointer: coarse)").matches;
+  setHelpTab(mobileControls ? "mobile" : "desktop");
+  ui.helpDialog.showModal();
+}
+
+function bindEvents() {
+  window.addEventListener("resize", resizeRenderer);
+  canvas.addEventListener("pointerdown", onScenePointerDown);
+  canvas.addEventListener("pointerup", onScenePointerUp);
+  canvas.addEventListener("pointercancel", () => { pointerStart = null; });
+
+  ui.puttButton.addEventListener("pointerdown", startCharge);
+  ui.puttButton.addEventListener("pointerup", releaseCharge);
+  ui.puttButton.addEventListener("pointercancel", releaseCharge);
+  ui.puttButton.addEventListener("pointerleave", event => {
+    if (charging && event.pointerType === "mouse") releaseCharge(event);
+  });
+
+  window.addEventListener("keydown", event => {
+    if (event.code === "Space" && !event.repeat && !ui.helpDialog.open && ui.celebration.hidden) startCharge(event);
+    if (event.code === "ArrowLeft" && !ball.rolling) setAim(aimAngle - Math.PI / 180);
+    if (event.code === "ArrowRight" && !ball.rolling) setAim(aimAngle + Math.PI / 180);
+    if (event.code === "KeyM" && !ui.helpDialog.open) {
+      if (roundMode) showToast("Đang chơi tính gậy", "Chuyển sang Luyện tự do để đặt bóng");
+      else setPlacementMode(!placementMode);
+    }
+    if (event.code === "KeyR" && !ui.helpDialog.open) retryLastShot();
+    if (event.code === "Escape" && placementMode) setPlacementMode(false);
+  });
+  window.addEventListener("keyup", event => { if (event.code === "Space") releaseCharge(event); });
+
+  ui.aimLeft.addEventListener("click", () => { if (!ball.rolling) setAim(aimAngle - 2 * Math.PI / 180); });
+  ui.aimRight.addEventListener("click", () => { if (!ball.rolling) setAim(aimAngle + 2 * Math.PI / 180); });
+  ui.slopeButton.addEventListener("click", () => {
+    showTerrain = !showTerrain;
+    terrainWire.visible = showTerrain;
+    slopeGroup.visible = showTerrain;
+    ui.slopeButton.classList.toggle("active", showTerrain);
+    ui.slopeButton.setAttribute("aria-pressed", String(showTerrain));
+    showToast(showTerrain ? "Đã bật phân tích địa hình" : "Đã ẩn lớp phân tích", showTerrain ? "Lưới cao độ và mũi tên dốc đang hiển thị" : "Vẫn có thể xoay mô hình 3D tự do");
+  });
+  ui.centerButton.addEventListener("click", focusCameraOnBall);
+  ui.placeBallButton.addEventListener("click", () => {
+    if (roundMode) {
+      showToast("Đang chơi tính gậy", "Chuyển sang Luyện tự do để đặt bóng");
+      return;
+    }
+    if (ball.rolling) {
+      showToast("Bóng đang lăn", "Đợi bóng dừng rồi đặt lại vị trí");
+      return;
+    }
+    setPlacementMode(!placementMode);
+  });
+  ui.retryButton.addEventListener("click", retryLastShot);
+  ui.roundModeButton.addEventListener("click", () => setRoundMode(!roundMode));
+  ui.zoomButton.addEventListener("click", () => setCameraView(cameraViewIndex + 1, cameraViewIndex === 0));
+  ui.courseSelect.addEventListener("change", event => {
+    const index = courses.findIndex(item => item.id === event.target.value);
+    loadCourse(index);
+  });
+
+  ui.celebrationRetry.addEventListener("click", () => loadCourse(courseIndex));
+  ui.celebrationNext.addEventListener("click", () => loadCourse(courseIndex + 1));
+  ui.helpButton.addEventListener("click", openHelp);
+  ui.helpDesktopTab.addEventListener("click", () => setHelpTab("desktop"));
+  ui.helpMobileTab.addEventListener("click", () => setHelpTab("mobile"));
+  [ui.helpDesktopTab, ui.helpMobileTab].forEach(tab => {
+    tab.addEventListener("keydown", event => {
+      if (event.key !== "ArrowLeft" && event.key !== "ArrowRight") return;
+      event.preventDefault();
+      setHelpTab(tab === ui.helpDesktopTab ? "mobile" : "desktop", true);
     });
   });
-}
-
-function drawTee() {
-  const point = coursePoint(0);
-  const width = point.halfWidth * 1.25;
-  ctx.fillStyle = "#87c568";
-  roundedRect(point.x - width/2, point.y - 10, width, 26, 7); ctx.fill();
-  const markerColor = ({black:"#202522",blue:"#2a78ba",white:"#ffffff",red:"#d8443c"})[state.tee];
-  [-.22,.22].forEach(offset => {
-    ctx.fillStyle = markerColor;
-    ctx.beginPath(); ctx.ellipse(point.x + width*offset, point.y+2, 7, 3, 0, 0, Math.PI*2); ctx.fill();
-    if (state.tee === "white") { ctx.strokeStyle="#b8c2ba"; ctx.lineWidth=1; ctx.stroke(); }
+  ui.closeHelp.addEventListener("click", () => ui.helpDialog.close());
+  ui.startPlaying.addEventListener("click", () => ui.helpDialog.close());
+  ui.helpDialog.addEventListener("click", event => {
+    if (event.target === ui.helpDialog) ui.helpDialog.close();
   });
 }
 
-function roundedRect(x,y,w,h,r) {
-  ctx.beginPath(); ctx.roundRect(x,y,w,h,r);
+function gameLoop(now) {
+  const dt = Math.min((now - lastTime) / 1000, 0.033);
+  lastTime = now;
+  updateCharge(now);
+  updatePhysics(dt);
+  if (ball.sunk) sinkProgress = Math.min(1, sinkProgress + dt * 1.65);
+  syncBallMesh(dt);
+  if (flagMesh) flagMesh.rotation.y = Math.sin(now * 0.0018) * 0.12;
+  controls.update();
+  renderer.render(scene, camera);
+  requestAnimationFrame(gameLoop);
 }
 
-function drawBall(animationT) {
-  let remaining = state.remainingYd;
-  let side = state.side;
-  let arc = 0;
-  if (animationT !== null && state.animation) {
-    const eased = 1 - Math.pow(1-animationT, 2.6);
-    remaining = state.animation.fromRemaining + (state.animation.toRemaining - state.animation.fromRemaining) * eased;
-    side = state.animation.fromSide + (state.animation.toSide - state.animation.fromSide) * eased;
-    arc = Math.sin(Math.PI * animationT) * Math.min(115, canvas.clientHeight * .19);
+function showFatalError(error) {
+  console.error("Không thể khởi tạo game 3D.", error);
+  ui.sceneLoading.innerHTML = "<strong>Không thể tải chế độ 3D.</strong><small>Hãy tải lại trang hoặc bật tăng tốc phần cứng của trình duyệt.</small>";
+}
+
+function init() {
+  try {
+    initScene();
+    populateCourseSelect();
+    bindEvents();
+    loadCourse(0);
+    renderer.render(scene, camera);
+    requestAnimationFrame(gameLoop);
+    setTimeout(() => ui.sceneLoading.classList.add("done"), 350);
+  } catch (error) {
+    showFatalError(error);
   }
-  const progress = clamp((targetDistanceYd() - remaining) / targetDistanceYd(), 0, .985);
-  const ground = coursePoint(progress, side);
-  const size = 4.5 + ground.perspective * 4.5;
-  ctx.fillStyle = `rgba(0,0,0,${.2 - (arc ? .08 : 0)})`;
-  ctx.beginPath(); ctx.ellipse(ground.x + 2, ground.y + 3, size * 1.35, size * .52, 0, 0, Math.PI*2); ctx.fill();
-  const y = ground.y - arc;
-  const gradient = ctx.createRadialGradient(ground.x-size*.35,y-size*.45,1,ground.x,y,size);
-  gradient.addColorStop(0,"#ffffff"); gradient.addColorStop(1,"#d7ded9");
-  ctx.fillStyle = gradient;
-  ctx.beginPath(); ctx.arc(ground.x,y,size,0,Math.PI*2); ctx.fill();
-  ctx.strokeStyle = "rgba(20,45,32,.25)"; ctx.lineWidth = 1; ctx.stroke();
 }
 
-function drawVignette(w,h) {
-  const gradient = ctx.createRadialGradient(w*.5,h*.52,Math.min(w,h)*.2,w*.5,h*.52,Math.max(w,h)*.72);
-  gradient.addColorStop(.55,"rgba(0,0,0,0)"); gradient.addColorStop(1,"rgba(0,18,9,.32)");
-  ctx.fillStyle = gradient; ctx.fillRect(0,0,w,h);
-}
-
-renderClubs();
-setupEvents();
-updateDriveLabel();
-resetHole();
-renderScorecard();
-resizeCanvas();
-new ResizeObserver(resizeCanvas).observe(els.courseStage);
+init();

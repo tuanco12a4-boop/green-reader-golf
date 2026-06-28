@@ -7,6 +7,7 @@
   <meta name="description" content="Ve hinh hoc phang 2D va tao loi giai mau bang AI cho giao vien.">
   <title>Vẽ hình học phẳng 2D AI</title>
   <link rel="stylesheet" href="styles.css">
+  <script src="config.js"></script>
 </head>
 <body>
   <div class="app-shell">
@@ -30,27 +31,20 @@
 
     <main class="workspace">
       <aside class="sidebar" aria-label="Bảng điều khiển">
-        <section class="panel ai-panel">
+        <section class="panel auth-panel">
           <div class="panel-heading">
-            <span>Cài đặt AI thật</span>
-            <button id="clearAiKeyBtn" class="text-btn" type="button">Xóa key</button>
+            <span>Đăng nhập AI</span>
+            <button id="signOutBtn" class="text-btn" type="button" hidden>Đăng xuất</button>
           </div>
-          <label class="field-label" for="aiProvider">Nhà cung cấp</label>
-          <select id="aiProvider">
-            <option value="gemini">Gemini API trực tiếp</option>
-            <option value="openai">OpenAI qua proxy/backend</option>
-          </select>
-          <label class="field-label field-gap" for="aiApiKey">AI API key</label>
-          <input id="aiApiKey" class="text-input api-key-input" type="password" placeholder="Nhập Gemini API key hoặc OpenAI key" autocomplete="off">
-          <label class="field-label field-gap" for="aiModel">Model</label>
-          <input id="aiModel" class="text-input" type="text" value="gemini-3.5-flash" autocomplete="off">
-          <label class="field-label field-gap" for="aiEndpoint">OpenAI endpoint/proxy</label>
-          <input id="aiEndpoint" class="text-input" type="text" placeholder="Chỉ cần khi chọn OpenAI" autocomplete="off">
-          <label class="check-row">
-            <input id="saveAiKey" type="checkbox">
-            <span>Lưu key trên trình duyệt này</span>
-          </label>
-          <p id="aiModeText" class="hint">Chưa nhập API key: app đang dùng AI demo trong trình duyệt.</p>
+          <label class="field-label" for="authEmail">Email</label>
+          <input id="authEmail" class="text-input" type="email" placeholder="ten@truong.edu.vn" autocomplete="email">
+          <label class="field-label field-gap" for="authPassword">Mật khẩu</label>
+          <input id="authPassword" class="text-input" type="password" placeholder="Tối thiểu 6 ký tự" autocomplete="current-password">
+          <div class="auth-actions">
+            <button id="signInBtn" class="primary-btn" type="button">Đăng nhập</button>
+            <button id="signUpBtn" class="soft-btn" type="button">Tạo tài khoản</button>
+          </div>
+          <p id="authStatusText" class="hint">Chưa đăng nhập: app đang dùng AI demo trong trình duyệt.</p>
         </section>
 
         <section class="panel">

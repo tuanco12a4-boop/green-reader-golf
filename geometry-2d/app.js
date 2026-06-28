@@ -6,14 +6,13 @@ const ctx = canvas.getContext("2d");
 const ui = {
   problemInput: document.getElementById("problemInput"),
   questionInput: document.getElementById("questionInput"),
-  aiPanel: document.querySelector(".ai-panel"),
-  aiProvider: document.getElementById("aiProvider"),
-  aiApiKey: document.getElementById("aiApiKey"),
-  aiModel: document.getElementById("aiModel"),
-  aiEndpoint: document.getElementById("aiEndpoint"),
-  saveAiKey: document.getElementById("saveAiKey"),
-  aiModeText: document.getElementById("aiModeText"),
-  clearAiKeyBtn: document.getElementById("clearAiKeyBtn"),
+  authPanel: document.querySelector(".auth-panel"),
+  authEmail: document.getElementById("authEmail"),
+  authPassword: document.getElementById("authPassword"),
+  signInBtn: document.getElementById("signInBtn"),
+  signUpBtn: document.getElementById("signUpBtn"),
+  signOutBtn: document.getElementById("signOutBtn"),
+  authStatusText: document.getElementById("authStatusText"),
   generateBtn: document.getElementById("generateBtn"),
   solveBtn: document.getElementById("solveBtn"),
   loadSampleBtn: document.getElementById("loadSampleBtn"),
@@ -41,12 +40,8 @@ const ui = {
 };
 
 const STORAGE_KEY = "geometry-2d-ai-scene-v1";
-const AI_SETTINGS_KEY = "geometry-2d-ai-settings-v1";
-const OPENAI_RESPONSES_URL = "https://api.openai.com/v1/responses";
-const GEMINI_INTERACTIONS_URL = "https://generativelanguage.googleapis.com/v1beta/interactions";
-const DEFAULT_PROVIDER = "gemini";
-const DEFAULT_GEMINI_MODEL = "gemini-3.5-flash";
-const DEFAULT_OPENAI_MODEL = "gpt-4.1-mini";
+const FIREBASE_SDK_VERSION = "12.15.0";
+const APP_CONFIG = window.GEOMETRY_AI_CONFIG || {};
 const BASE_COLOR = "#58a6ff";
 const POINT_COLOR = "#edf7f2";
 const LABEL_COLOR = "#f7fff9";
@@ -64,6 +59,10 @@ let selected = null;
 let history = [];
 let historyIndex = -1;
 let pointCounter = 0;
+let firebaseApi = null;
+let auth = null;
+let currentUser = null;
+let authReady = false;
 
 const samples = [
   "Cho hình chữ nhật ABCD có AB = 8cm, BC = 6cm. Kẻ đường cao AH của tam giác ABD. Hãy tính BD, AH và chứng minh hai tam giác đồng dạng.",
@@ -268,92 +267,135 @@ function setStatus(message) {
   ui.stageTip.textContent = message;
 }
 
-function loadAISettings() {
-  try {
-    const saved = JSON.parse(localStorage.getItem(AI_SETTINGS_KEY) || "null");
-    ui.aiProvider.value = saved?.provider || DEFAULT_PROVIDER;
-    ui.aiModel.value = saved?.model || defaultModelForProvider(ui.aiProvider.value);
-    ui.aiEndpoint.value = saved?.endpoint || "";
-    if (saved?.apiKey) {
-      ui.aiApiKey.value = saved.apiKey;
-      ui.saveAiKey.checked = true;
-    }
-  } catch {
-    ui.aiProvider.value = DEFAULT_PROVIDER;
-    ui.aiModel.value = DEFAULT_GEMINI_MODEL;
-  }
-  updateAIMode();
-}
-
-function saveAISettings() {
-  const data = {
-    provider: getAISettings().provider,
-    model: getAISettings().model,
-    endpoint: getAISettings().endpoint
-  };
-  if (ui.saveAiKey.checked && ui.aiApiKey.value.trim()) {
-    data.apiKey = ui.aiApiKey.value.trim();
-  }
-  localStorage.setItem(AI_SETTINGS_KEY, JSON.stringify(data));
-  updateAIMode();
-}
-
-function clearAIKey() {
-  ui.aiApiKey.value = "";
-  ui.saveAiKey.checked = false;
-  localStorage.removeItem(AI_SETTINGS_KEY);
-  localStorage.setItem(AI_SETTINGS_KEY, JSON.stringify({
-    provider: getAISettings().provider,
-    model: getAISettings().model,
-    endpoint: getAISettings().endpoint
-  }));
-  updateAIMode();
-  setStatus("Đã xóa API key khỏi trình duyệt này.");
-}
-
-function getAISettings() {
-  const provider = ui.aiProvider.value || DEFAULT_PROVIDER;
-  return {
-    provider,
-    apiKey: ui.aiApiKey.value.trim(),
-    model: ui.aiModel.value.trim() || defaultModelForProvider(provider),
-    endpoint: ui.aiEndpoint.value.trim()
-  };
-}
-
-function hasAIKey() {
-  return Boolean(getAISettings().apiKey);
-}
-
-function defaultModelForProvider(provider) {
-  return provider === "openai" ? DEFAULT_OPENAI_MODEL : DEFAULT_GEMINI_MODEL;
-}
-
-function updateProviderDefaults() {
-  const currentModel = ui.aiModel.value.trim();
-  const defaultModels = [DEFAULT_GEMINI_MODEL, DEFAULT_OPENAI_MODEL, ""];
-  if (defaultModels.includes(currentModel)) {
-    ui.aiModel.value = defaultModelForProvider(ui.aiProvider.value);
-  }
-  updateAIMode();
-}
-
-function updateAIMode(error = "") {
-  const settings = getAISettings();
-  const ready = Boolean(settings.apiKey);
-  const providerName = settings.provider === "openai" ? "OpenAI" : "Gemini";
-  ui.aiPanel.classList.toggle("ready", ready && !error);
-  ui.aiPanel.classList.toggle("error", Boolean(error));
-  if (error) {
-    ui.aiModeText.textContent = error;
+async function initAuth() {
+  if (!isFirebaseConfigured()) {
+    authReady = true;
+    updateAuthStatus("Chưa cấu hình Firebase/backend. App đang dùng AI demo.");
     return;
   }
-  ui.aiModeText.textContent = ready
-    ? `Đã bật AI thật (${providerName}, ${settings.model}).`
-    : "Chưa nhập API key: app đang dùng AI demo trong trình duyệt.";
-  if (ready && settings.provider === "openai" && !settings.endpoint) {
-    ui.aiModeText.textContent = "OpenAI trên GitHub Pages cần endpoint proxy/backend; nếu bỏ trống có thể bị trình duyệt chặn.";
+
+  try {
+    const [appModule, authModule] = await Promise.all([
+      import(`https://www.gstatic.com/firebasejs/${FIREBASE_SDK_VERSION}/firebase-app.js`),
+      import(`https://www.gstatic.com/firebasejs/${FIREBASE_SDK_VERSION}/firebase-auth.js`)
+    ]);
+
+    const firebaseApp = appModule.initializeApp(APP_CONFIG.firebase);
+    auth = authModule.getAuth(firebaseApp);
+    firebaseApi = authModule;
+    firebaseApi.onAuthStateChanged(auth, (user) => {
+      currentUser = user;
+      authReady = true;
+      updateAuthStatus();
+    });
+  } catch (error) {
+    authReady = true;
+    updateAuthStatus(`Không tải được Firebase Auth: ${error.message}`);
   }
+}
+
+function isFirebaseConfigured() {
+  const firebase = APP_CONFIG.firebase || {};
+  return Boolean(
+    firebase.apiKey &&
+    firebase.projectId &&
+    firebase.appId &&
+    APP_CONFIG.functionsUrl &&
+    !String(firebase.apiKey).includes("PASTE_") &&
+    !String(firebase.projectId).includes("PASTE_") &&
+    !String(firebase.appId).includes("PASTE_") &&
+    !String(APP_CONFIG.functionsUrl).includes("PASTE_")
+  );
+}
+
+function canUseBackendAI() {
+  return Boolean(authReady && currentUser && isFirebaseConfigured());
+}
+
+function updateAuthStatus(error = "") {
+  const ready = canUseBackendAI();
+  ui.authPanel.classList.toggle("ready", ready && !error);
+  ui.authPanel.classList.toggle("error", Boolean(error));
+  ui.signOutBtn.hidden = !currentUser;
+  ui.signInBtn.disabled = Boolean(currentUser) || !isFirebaseConfigured();
+  ui.signUpBtn.disabled = Boolean(currentUser) || !isFirebaseConfigured();
+  ui.authEmail.disabled = Boolean(currentUser) || !isFirebaseConfigured();
+  ui.authPassword.disabled = Boolean(currentUser) || !isFirebaseConfigured();
+
+  if (error) {
+    ui.authStatusText.textContent = error;
+    return;
+  }
+  if (!isFirebaseConfigured()) {
+    ui.authStatusText.textContent = "Chưa cấu hình Firebase/backend. App đang dùng AI demo.";
+    return;
+  }
+  if (!authReady) {
+    ui.authStatusText.textContent = "Đang kiểm tra đăng nhập...";
+    return;
+  }
+  ui.authStatusText.textContent = currentUser
+    ? `Đã đăng nhập: ${currentUser.email}. AI sẽ chạy qua backend, không cần API key.`
+    : "Chưa đăng nhập: nhập email và mật khẩu để dùng AI thật.";
+}
+
+async function signInWithEmail() {
+  if (!firebaseApi || !auth) {
+    updateAuthStatus("Firebase chưa sẵn sàng hoặc chưa cấu hình.");
+    return;
+  }
+  const email = ui.authEmail.value.trim();
+  const password = ui.authPassword.value;
+  if (!email || !password) {
+    updateAuthStatus("Hãy nhập email và mật khẩu.");
+    return;
+  }
+  await runAuthAction("Đang đăng nhập...", () => firebaseApi.signInWithEmailAndPassword(auth, email, password));
+}
+
+async function signUpWithEmail() {
+  if (!firebaseApi || !auth) {
+    updateAuthStatus("Firebase chưa sẵn sàng hoặc chưa cấu hình.");
+    return;
+  }
+  const email = ui.authEmail.value.trim();
+  const password = ui.authPassword.value;
+  if (!email || password.length < 6) {
+    updateAuthStatus("Mật khẩu cần tối thiểu 6 ký tự.");
+    return;
+  }
+  await runAuthAction("Đang tạo tài khoản...", () => firebaseApi.createUserWithEmailAndPassword(auth, email, password));
+}
+
+async function signOutUser() {
+  if (!firebaseApi || !auth) return;
+  await runAuthAction("Đang đăng xuất...", () => firebaseApi.signOut(auth));
+}
+
+async function runAuthAction(loadingText, action) {
+  ui.signInBtn.disabled = true;
+  ui.signUpBtn.disabled = true;
+  ui.signOutBtn.disabled = true;
+  ui.authStatusText.textContent = loadingText;
+  try {
+    await action();
+    ui.authPassword.value = "";
+  } catch (error) {
+    updateAuthStatus(readableAuthError(error));
+  } finally {
+    ui.signOutBtn.disabled = false;
+    updateAuthStatus();
+  }
+}
+
+function readableAuthError(error) {
+  const code = error?.code || "";
+  if (code.includes("invalid-credential") || code.includes("wrong-password")) return "Email hoặc mật khẩu không đúng.";
+  if (code.includes("user-not-found")) return "Email này chưa có tài khoản.";
+  if (code.includes("email-already-in-use")) return "Email này đã được đăng ký.";
+  if (code.includes("weak-password")) return "Mật khẩu quá yếu, cần tối thiểu 6 ký tự.";
+  if (code.includes("invalid-email")) return "Email không hợp lệ.";
+  return `Lỗi đăng nhập: ${error.message || "không rõ nguyên nhân"}`;
 }
 
 function resize() {
@@ -959,104 +1001,26 @@ async function solveWithAI(question) {
   };
 }
 
-async function callAIResponses(options) {
-  return getAISettings().provider === "openai"
-    ? callOpenAIResponses(options)
-    : callGeminiInteractions(options);
-}
-
-async function callOpenAIResponses({ system, user, schema, maxOutputTokens }) {
-  const { apiKey, model, endpoint } = getAISettings();
-  if (!apiKey) throw new Error("Chưa nhập OpenAI API key.");
-  if (!endpoint) throw new Error("OpenAI trên GitHub Pages cần endpoint proxy/backend để tránh lộ key và lỗi CORS.");
-
-  const body = {
-    model,
-    input: [
-      { role: "system", content: system },
-      { role: "user", content: user }
-    ],
-    temperature: 0.2,
-    max_output_tokens: maxOutputTokens,
-    store: false,
-    text: {
-      format: {
-        type: "json_schema",
-        name: schema.name,
-        strict: true,
-        schema: schema.schema
-      }
-    }
-  };
-
-  const response = await fetch(endpoint || OPENAI_RESPONSES_URL, {
+async function callAIResponses({ system, user, schema, maxOutputTokens }) {
+  if (!canUseBackendAI()) {
+    throw new Error("Bạn cần đăng nhập email để dùng AI thật.");
+  }
+  const token = await currentUser.getIdToken();
+  const response = await fetch(APP_CONFIG.functionsUrl, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      Authorization: `Bearer ${apiKey}`
+      Authorization: `Bearer ${token}`
     },
-    body: JSON.stringify(body)
+    body: JSON.stringify({ system, user, schema, maxOutputTokens })
   });
 
   const payload = await response.json().catch(() => ({}));
   if (!response.ok) {
-    const message = payload?.error?.message || `OpenAI API trả lỗi ${response.status}.`;
-    throw new Error(message);
+    throw new Error(payload.error || `Backend AI trả lỗi ${response.status}.`);
   }
-
-  const text = extractResponseText(payload);
-  if (!text) throw new Error("AI không trả về nội dung có thể đọc.");
-  return text;
-}
-
-async function callGeminiInteractions({ system, user, schema }) {
-  const { apiKey, model } = getAISettings();
-  if (!apiKey) throw new Error("Chưa nhập Gemini API key.");
-
-  const response = await fetch(GEMINI_INTERACTIONS_URL, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "x-goog-api-key": apiKey
-    },
-    body: JSON.stringify({
-      model,
-      input: `${system}\n\n${user}`,
-      response_format: {
-        type: "text",
-        mime_type: "application/json",
-        schema: schema.schema
-      }
-    })
-  });
-
-  const payload = await response.json().catch(() => ({}));
-  if (!response.ok) {
-    const message = payload?.error?.message || `Gemini API trả lỗi ${response.status}.`;
-    throw new Error(message);
-  }
-
-  const text = extractResponseText(payload);
-  if (!text) throw new Error("Gemini không trả về nội dung có thể đọc.");
-  return text;
-}
-
-function extractResponseText(payload) {
-  if (typeof payload.output_text === "string") return payload.output_text;
-  if (typeof payload.text === "string") return payload.text;
-  const parts = [];
-  for (const item of payload.output || []) {
-    for (const content of item.content || []) {
-      if (typeof content.text === "string") parts.push(content.text);
-      if (typeof content.output_text === "string") parts.push(content.output_text);
-    }
-  }
-  for (const candidate of payload.candidates || []) {
-    for (const part of candidate.content?.parts || []) {
-      if (typeof part.text === "string") parts.push(part.text);
-    }
-  }
-  return parts.join("\n").trim();
+  if (!payload.text) throw new Error("Backend AI không trả về nội dung.");
+  return payload.text;
 }
 
 function parseJSONText(text) {
@@ -1581,18 +1545,9 @@ function initEvents() {
   }, { passive: false });
 
   ui.tools.forEach((button) => button.addEventListener("click", () => setTool(button.dataset.tool)));
-  ui.aiProvider.addEventListener("change", () => {
-    updateProviderDefaults();
-    saveAISettings();
-  });
-  ui.aiApiKey.addEventListener("input", () => updateAIMode());
-  ui.aiApiKey.addEventListener("change", saveAISettings);
-  ui.aiModel.addEventListener("input", () => updateAIMode());
-  ui.aiModel.addEventListener("change", saveAISettings);
-  ui.aiEndpoint.addEventListener("input", () => updateAIMode());
-  ui.aiEndpoint.addEventListener("change", saveAISettings);
-  ui.saveAiKey.addEventListener("change", saveAISettings);
-  ui.clearAiKeyBtn.addEventListener("click", clearAIKey);
+  ui.signInBtn.addEventListener("click", signInWithEmail);
+  ui.signUpBtn.addEventListener("click", signUpWithEmail);
+  ui.signOutBtn.addEventListener("click", signOutUser);
   ui.generateBtn.addEventListener("click", async () => {
     const prompt = ui.problemInput.value.trim();
     if (!prompt) {
@@ -1602,18 +1557,18 @@ function initEvents() {
 
     const oldText = ui.generateBtn.textContent;
     ui.generateBtn.disabled = true;
-    ui.generateBtn.textContent = hasAIKey() ? "AI đang dựng hình..." : "Đang dựng hình demo...";
+    ui.generateBtn.textContent = canUseBackendAI() ? "AI đang dựng hình..." : "Đang dựng hình demo...";
     try {
-      const next = hasAIKey() ? await createSceneWithAI(prompt) : createSceneFromPrompt(prompt);
-      setScene(next, hasAIKey() ? "AI thật đã tạo hình từ đề bài." : "Chưa nhập API key, đã tạo hình bằng chế độ demo.");
+      const next = canUseBackendAI() ? await createSceneWithAI(prompt) : createSceneFromPrompt(prompt);
+      setScene(next, canUseBackendAI() ? "AI thật đã tạo hình từ đề bài." : "Chưa đăng nhập, đã tạo hình bằng chế độ demo.");
       fitScene();
-      updateAIMode();
+      updateAuthStatus();
     } catch (error) {
       console.error(error);
       const next = createSceneFromPrompt(prompt);
       setScene(next, "AI thật bị lỗi nên app tạm tạo hình bằng chế độ demo.");
       fitScene();
-      updateAIMode(`Lỗi AI: ${error.message}`);
+      updateAuthStatus(`Lỗi AI: ${error.message}`);
     } finally {
       ui.generateBtn.disabled = false;
       ui.generateBtn.textContent = oldText;
@@ -1622,20 +1577,20 @@ function initEvents() {
   ui.solveBtn.addEventListener("click", async () => {
     const oldText = ui.solveBtn.textContent;
     ui.solveBtn.disabled = true;
-    ui.solveBtn.textContent = hasAIKey() ? "AI đang giải..." : "Đang tạo lời giải demo...";
+    ui.solveBtn.textContent = canUseBackendAI() ? "AI đang giải..." : "Đang tạo lời giải demo...";
     try {
-      const solution = hasAIKey() ? await solveWithAI(ui.questionInput.value.trim()) : makeSolution();
+      const solution = canUseBackendAI() ? await solveWithAI(ui.questionInput.value.trim()) : makeSolution();
       ui.solutionTitle.textContent = solution.title;
       ui.solutionOutput.innerHTML = solution.html;
-      setStatus(hasAIKey() ? "AI thật đã tạo lời giải từ hình hiện tại." : "Đã tạo lời giải mẫu.");
-      updateAIMode();
+      setStatus(canUseBackendAI() ? "AI thật đã tạo lời giải từ hình hiện tại." : "Đã tạo lời giải mẫu.");
+      updateAuthStatus();
     } catch (error) {
       console.error(error);
       const solution = makeSolution();
       ui.solutionTitle.textContent = solution.title;
       ui.solutionOutput.innerHTML = solution.html;
       setStatus("AI thật bị lỗi nên app tạm dùng lời giải demo.");
-      updateAIMode(`Lỗi AI: ${error.message}`);
+      updateAuthStatus(`Lỗi AI: ${error.message}`);
     } finally {
       ui.solveBtn.disabled = false;
       ui.solveBtn.textContent = oldText;
@@ -1690,7 +1645,8 @@ function initEvents() {
 
 function init() {
   initEvents();
-  loadAISettings();
+  updateAuthStatus();
+  initAuth();
   resize();
   if (!loadScene()) {
     scene = rectangleScene(ui.problemInput.value);

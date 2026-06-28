@@ -157,7 +157,8 @@ button {
 }
 
 textarea,
-select {
+select,
+.text-input {
   width: 100%;
   border: 1px solid var(--line);
   border-radius: 8px;
@@ -175,7 +176,8 @@ textarea {
 
 textarea:focus,
 select:focus,
-input[type="color"]:focus {
+input[type="color"]:focus,
+.text-input:focus {
   border-color: rgba(66, 211, 146, 0.58);
   box-shadow: 0 0 0 3px rgba(66, 211, 146, 0.12);
 }
@@ -183,6 +185,48 @@ input[type="color"]:focus {
 select {
   height: 40px;
   padding: 0 10px;
+}
+
+.text-input {
+  height: 40px;
+  padding: 0 10px;
+}
+
+.field-gap {
+  margin-top: 10px;
+}
+
+.api-key-input {
+  letter-spacing: 0.04em;
+}
+
+.check-row {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  margin-top: 10px;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.check-row input {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--accent);
+}
+
+.ai-panel {
+  border-color: rgba(66, 211, 146, 0.22);
+  background: linear-gradient(180deg, rgba(66, 211, 146, 0.07), rgba(255, 255, 255, 0.025));
+}
+
+.ai-panel.ready {
+  border-color: rgba(66, 211, 146, 0.45);
+}
+
+.ai-panel.error {
+  border-color: rgba(255, 107, 107, 0.55);
 }
 
 .hint {

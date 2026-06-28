@@ -30,6 +30,29 @@
 
     <main class="workspace">
       <aside class="sidebar" aria-label="Bảng điều khiển">
+        <section class="panel ai-panel">
+          <div class="panel-heading">
+            <span>Cài đặt AI thật</span>
+            <button id="clearAiKeyBtn" class="text-btn" type="button">Xóa key</button>
+          </div>
+          <label class="field-label" for="aiProvider">Nhà cung cấp</label>
+          <select id="aiProvider">
+            <option value="gemini">Gemini API trực tiếp</option>
+            <option value="openai">OpenAI qua proxy/backend</option>
+          </select>
+          <label class="field-label field-gap" for="aiApiKey">AI API key</label>
+          <input id="aiApiKey" class="text-input api-key-input" type="password" placeholder="Nhập Gemini API key hoặc OpenAI key" autocomplete="off">
+          <label class="field-label field-gap" for="aiModel">Model</label>
+          <input id="aiModel" class="text-input" type="text" value="gemini-3.5-flash" autocomplete="off">
+          <label class="field-label field-gap" for="aiEndpoint">OpenAI endpoint/proxy</label>
+          <input id="aiEndpoint" class="text-input" type="text" placeholder="Chỉ cần khi chọn OpenAI" autocomplete="off">
+          <label class="check-row">
+            <input id="saveAiKey" type="checkbox">
+            <span>Lưu key trên trình duyệt này</span>
+          </label>
+          <p id="aiModeText" class="hint">Chưa nhập API key: app đang dùng AI demo trong trình duyệt.</p>
+        </section>
+
         <section class="panel">
           <div class="panel-heading">
             <span>Vẽ thông minh</span>

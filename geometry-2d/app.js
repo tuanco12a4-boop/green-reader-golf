@@ -6,6 +6,14 @@ const ctx = canvas.getContext("2d");
 const ui = {
   problemInput: document.getElementById("problemInput"),
   questionInput: document.getElementById("questionInput"),
+  aiPanel: document.querySelector(".ai-panel"),
+  aiProvider: document.getElementById("aiProvider"),
+  aiApiKey: document.getElementById("aiApiKey"),
+  aiModel: document.getElementById("aiModel"),
+  aiEndpoint: document.getElementById("aiEndpoint"),
+  saveAiKey: document.getElementById("saveAiKey"),
+  aiModeText: document.getElementById("aiModeText"),
+  clearAiKeyBtn: document.getElementById("clearAiKeyBtn"),
   generateBtn: document.getElementById("generateBtn"),
   solveBtn: document.getElementById("solveBtn"),
   loadSampleBtn: document.getElementById("loadSampleBtn"),
@@ -33,6 +41,12 @@ const ui = {
 };
 
 const STORAGE_KEY = "geometry-2d-ai-scene-v1";
+const AI_SETTINGS_KEY = "geometry-2d-ai-settings-v1";
+const OPENAI_RESPONSES_URL = "https://api.openai.com/v1/responses";
+const GEMINI_INTERACTIONS_URL = "https://generativelanguage.googleapis.com/v1beta/interactions";
+const DEFAULT_PROVIDER = "gemini";
+const DEFAULT_GEMINI_MODEL = "gemini-3.5-flash";
+const DEFAULT_OPENAI_MODEL = "gpt-4.1-mini";
 const BASE_COLOR = "#58a6ff";
 const POINT_COLOR = "#edf7f2";
 const LABEL_COLOR = "#f7fff9";
@@ -56,6 +70,142 @@ const samples = [
   "Cho tam giác ABC có A(0;4), B(-4;-2), C(5;-1). Vẽ trung tuyến AM, đường cao AH và trọng tâm G.",
   "Cho tam giác ABC nội tiếp đường tròn tâm O. Vẽ các cạnh, đường tròn ngoại tiếp và tâm O."
 ];
+
+const aiSceneSchema = {
+  name: "geometry_scene",
+  schema: {
+    type: "object",
+    additionalProperties: false,
+    required: ["points", "segments", "circles", "polygons", "angles", "texts", "meta"],
+    properties: {
+      points: {
+        type: "array",
+        items: {
+          type: "object",
+          additionalProperties: false,
+          required: ["id", "label", "x", "y", "color", "radius", "labelColor", "role"],
+          properties: {
+            id: { type: "string" },
+            label: { type: "string" },
+            x: { type: "number" },
+            y: { type: "number" },
+            color: { type: "string" },
+            radius: { type: "number" },
+            labelColor: { type: "string" },
+            role: { type: "string" }
+          }
+        }
+      },
+      segments: {
+        type: "array",
+        items: {
+          type: "object",
+          additionalProperties: false,
+          required: ["id", "from", "to", "color", "width", "dashed", "role"],
+          properties: {
+            id: { type: "string" },
+            from: { type: "string" },
+            to: { type: "string" },
+            color: { type: "string" },
+            width: { type: "number" },
+            dashed: { type: "boolean" },
+            role: { type: "string" }
+          }
+        }
+      },
+      circles: {
+        type: "array",
+        items: {
+          type: "object",
+          additionalProperties: false,
+          required: ["id", "center", "radius", "color", "width", "dashed", "role"],
+          properties: {
+            id: { type: "string" },
+            center: { type: "string" },
+            radius: { type: "number" },
+            color: { type: "string" },
+            width: { type: "number" },
+            dashed: { type: "boolean" },
+            role: { type: "string" }
+          }
+        }
+      },
+      polygons: {
+        type: "array",
+        items: {
+          type: "object",
+          additionalProperties: false,
+          required: ["id", "points", "color", "width", "fill"],
+          properties: {
+            id: { type: "string" },
+            points: { type: "array", items: { type: "string" } },
+            color: { type: "string" },
+            width: { type: "number" },
+            fill: { type: "string" }
+          }
+        }
+      },
+      angles: {
+        type: "array",
+        items: {
+          type: "object",
+          additionalProperties: false,
+          required: ["id", "a", "o", "b", "radius", "color"],
+          properties: {
+            id: { type: "string" },
+            a: { type: "string" },
+            o: { type: "string" },
+            b: { type: "string" },
+            radius: { type: "number" },
+            color: { type: "string" }
+          }
+        }
+      },
+      texts: {
+        type: "array",
+        items: {
+          type: "object",
+          additionalProperties: false,
+          required: ["id", "x", "y", "text", "color", "size"],
+          properties: {
+            id: { type: "string" },
+            x: { type: "number" },
+            y: { type: "number" },
+            text: { type: "string" },
+            color: { type: "string" },
+            size: { type: "number" }
+          }
+        }
+      },
+      meta: {
+        type: "object",
+        additionalProperties: false,
+        required: ["type", "prompt", "ab", "bc", "notes"],
+        properties: {
+          type: { type: "string" },
+          prompt: { type: "string" },
+          ab: { type: "number" },
+          bc: { type: "number" },
+          notes: { type: "array", items: { type: "string" } }
+        }
+      }
+    }
+  }
+};
+
+const aiSolutionSchema = {
+  name: "geometry_solution",
+  schema: {
+    type: "object",
+    additionalProperties: false,
+    required: ["title", "steps", "finalAnswer"],
+    properties: {
+      title: { type: "string" },
+      steps: { type: "array", items: { type: "string" } },
+      finalAnswer: { type: "string" }
+    }
+  }
+};
 
 function createEmptyScene() {
   return {
@@ -116,6 +266,94 @@ function labelIndex(label) {
 function setStatus(message) {
   ui.statusText.textContent = message;
   ui.stageTip.textContent = message;
+}
+
+function loadAISettings() {
+  try {
+    const saved = JSON.parse(localStorage.getItem(AI_SETTINGS_KEY) || "null");
+    ui.aiProvider.value = saved?.provider || DEFAULT_PROVIDER;
+    ui.aiModel.value = saved?.model || defaultModelForProvider(ui.aiProvider.value);
+    ui.aiEndpoint.value = saved?.endpoint || "";
+    if (saved?.apiKey) {
+      ui.aiApiKey.value = saved.apiKey;
+      ui.saveAiKey.checked = true;
+    }
+  } catch {
+    ui.aiProvider.value = DEFAULT_PROVIDER;
+    ui.aiModel.value = DEFAULT_GEMINI_MODEL;
+  }
+  updateAIMode();
+}
+
+function saveAISettings() {
+  const data = {
+    provider: getAISettings().provider,
+    model: getAISettings().model,
+    endpoint: getAISettings().endpoint
+  };
+  if (ui.saveAiKey.checked && ui.aiApiKey.value.trim()) {
+    data.apiKey = ui.aiApiKey.value.trim();
+  }
+  localStorage.setItem(AI_SETTINGS_KEY, JSON.stringify(data));
+  updateAIMode();
+}
+
+function clearAIKey() {
+  ui.aiApiKey.value = "";
+  ui.saveAiKey.checked = false;
+  localStorage.removeItem(AI_SETTINGS_KEY);
+  localStorage.setItem(AI_SETTINGS_KEY, JSON.stringify({
+    provider: getAISettings().provider,
+    model: getAISettings().model,
+    endpoint: getAISettings().endpoint
+  }));
+  updateAIMode();
+  setStatus("Đã xóa API key khỏi trình duyệt này.");
+}
+
+function getAISettings() {
+  const provider = ui.aiProvider.value || DEFAULT_PROVIDER;
+  return {
+    provider,
+    apiKey: ui.aiApiKey.value.trim(),
+    model: ui.aiModel.value.trim() || defaultModelForProvider(provider),
+    endpoint: ui.aiEndpoint.value.trim()
+  };
+}
+
+function hasAIKey() {
+  return Boolean(getAISettings().apiKey);
+}
+
+function defaultModelForProvider(provider) {
+  return provider === "openai" ? DEFAULT_OPENAI_MODEL : DEFAULT_GEMINI_MODEL;
+}
+
+function updateProviderDefaults() {
+  const currentModel = ui.aiModel.value.trim();
+  const defaultModels = [DEFAULT_GEMINI_MODEL, DEFAULT_OPENAI_MODEL, ""];
+  if (defaultModels.includes(currentModel)) {
+    ui.aiModel.value = defaultModelForProvider(ui.aiProvider.value);
+  }
+  updateAIMode();
+}
+
+function updateAIMode(error = "") {
+  const settings = getAISettings();
+  const ready = Boolean(settings.apiKey);
+  const providerName = settings.provider === "openai" ? "OpenAI" : "Gemini";
+  ui.aiPanel.classList.toggle("ready", ready && !error);
+  ui.aiPanel.classList.toggle("error", Boolean(error));
+  if (error) {
+    ui.aiModeText.textContent = error;
+    return;
+  }
+  ui.aiModeText.textContent = ready
+    ? `Đã bật AI thật (${providerName}, ${settings.model}).`
+    : "Chưa nhập API key: app đang dùng AI demo trong trình duyệt.";
+  if (ready && settings.provider === "openai" && !settings.endpoint) {
+    ui.aiModeText.textContent = "OpenAI trên GitHub Pages cần endpoint proxy/backend; nếu bỏ trống có thể bị trình duyệt chặn.";
+  }
 }
 
 function resize() {
@@ -671,6 +909,317 @@ function createSceneFromPrompt(prompt) {
   return rectangleScene(prompt);
 }
 
+async function createSceneWithAI(prompt) {
+  const system = [
+    "Bạn là trợ lý dựng hình học phẳng 2D cho giáo viên Việt Nam.",
+    "Nhiệm vụ: đọc đề hình học và trả về một scene JSON để canvas dựng hình.",
+    "Hệ tọa độ: gốc ở giữa màn hình, x sang phải, y đi xuống, đơn vị pixel.",
+    "Hãy đặt hình gọn trong khoảng x từ -320 đến 320, y từ -230 đến 230.",
+    "Ưu tiên đúng quan hệ hình học hơn đúng tỉ lệ tuyệt đối khi đề thiếu dữ kiện.",
+    "Dùng nhãn điểm quen thuộc A, B, C, D, H, M, O, I, G.",
+    "Các tham chiếu from/to/center/a/o/b/points phải trỏ tới id hoặc label điểm có tồn tại.",
+    "Nếu có đường cao, trung tuyến, đường tròn, tâm đặc biệt, hãy thêm nét phụ bằng dashed=true.",
+    "Không trả lời văn bản ngoài JSON."
+  ].join("\n");
+
+  const user = [
+    "Đề bài:",
+    prompt,
+    "",
+    "Hãy tạo scene gồm points, segments, circles, polygons, angles, texts, meta.",
+    "Màu gợi ý: cạnh chính #58a6ff, nét phụ #42d392, chữ #edf7f2."
+  ].join("\n");
+
+  const raw = await callAIResponses({ system, user, schema: aiSceneSchema, maxOutputTokens: 3500 });
+  return normalizeAIScene(parseJSONText(raw), prompt);
+}
+
+async function solveWithAI(question) {
+  const system = [
+    "Bạn là giáo viên Toán THCS/THPT, giải hình học phẳng bằng tiếng Việt.",
+    "Bạn nhận đề bài, câu hỏi và scene JSON đã được dựng ở canvas.",
+    "Hãy giải ngắn gọn, từng bước, có công thức khi cần.",
+    "Nếu dữ kiện chưa đủ để tính số cụ thể, hãy nói rõ thiếu dữ kiện và đưa hướng chứng minh.",
+    "Không bịa giả thiết ngoài đề và scene.",
+    "Không trả lời văn bản ngoài JSON."
+  ].join("\n");
+
+  const user = [
+    `Đề bài: ${ui.problemInput.value.trim()}`,
+    `Câu hỏi: ${question || "Hãy giải bài toán theo hình đã dựng."}`,
+    "Scene JSON hiện tại:",
+    JSON.stringify(scene)
+  ].join("\n\n");
+
+  const raw = await callAIResponses({ system, user, schema: aiSolutionSchema, maxOutputTokens: 2600 });
+  const data = parseJSONText(raw);
+  return {
+    title: cleanText(data.title, "Lời giải AI"),
+    html: renderAISolution(data)
+  };
+}
+
+async function callAIResponses(options) {
+  return getAISettings().provider === "openai"
+    ? callOpenAIResponses(options)
+    : callGeminiInteractions(options);
+}
+
+async function callOpenAIResponses({ system, user, schema, maxOutputTokens }) {
+  const { apiKey, model, endpoint } = getAISettings();
+  if (!apiKey) throw new Error("Chưa nhập OpenAI API key.");
+  if (!endpoint) throw new Error("OpenAI trên GitHub Pages cần endpoint proxy/backend để tránh lộ key và lỗi CORS.");
+
+  const body = {
+    model,
+    input: [
+      { role: "system", content: system },
+      { role: "user", content: user }
+    ],
+    temperature: 0.2,
+    max_output_tokens: maxOutputTokens,
+    store: false,
+    text: {
+      format: {
+        type: "json_schema",
+        name: schema.name,
+        strict: true,
+        schema: schema.schema
+      }
+    }
+  };
+
+  const response = await fetch(endpoint || OPENAI_RESPONSES_URL, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${apiKey}`
+    },
+    body: JSON.stringify(body)
+  });
+
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    const message = payload?.error?.message || `OpenAI API trả lỗi ${response.status}.`;
+    throw new Error(message);
+  }
+
+  const text = extractResponseText(payload);
+  if (!text) throw new Error("AI không trả về nội dung có thể đọc.");
+  return text;
+}
+
+async function callGeminiInteractions({ system, user, schema }) {
+  const { apiKey, model } = getAISettings();
+  if (!apiKey) throw new Error("Chưa nhập Gemini API key.");
+
+  const response = await fetch(GEMINI_INTERACTIONS_URL, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "x-goog-api-key": apiKey
+    },
+    body: JSON.stringify({
+      model,
+      input: `${system}\n\n${user}`,
+      response_format: {
+        type: "text",
+        mime_type: "application/json",
+        schema: schema.schema
+      }
+    })
+  });
+
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    const message = payload?.error?.message || `Gemini API trả lỗi ${response.status}.`;
+    throw new Error(message);
+  }
+
+  const text = extractResponseText(payload);
+  if (!text) throw new Error("Gemini không trả về nội dung có thể đọc.");
+  return text;
+}
+
+function extractResponseText(payload) {
+  if (typeof payload.output_text === "string") return payload.output_text;
+  if (typeof payload.text === "string") return payload.text;
+  const parts = [];
+  for (const item of payload.output || []) {
+    for (const content of item.content || []) {
+      if (typeof content.text === "string") parts.push(content.text);
+      if (typeof content.output_text === "string") parts.push(content.output_text);
+    }
+  }
+  for (const candidate of payload.candidates || []) {
+    for (const part of candidate.content?.parts || []) {
+      if (typeof part.text === "string") parts.push(part.text);
+    }
+  }
+  return parts.join("\n").trim();
+}
+
+function parseJSONText(text) {
+  const cleaned = String(text)
+    .trim()
+    .replace(/^```(?:json)?/i, "")
+    .replace(/```$/i, "")
+    .trim();
+  return JSON.parse(cleaned);
+}
+
+function normalizeAIScene(raw, prompt) {
+  const next = createEmptyScene();
+  const idMap = new Map();
+  const usedIds = new Set();
+
+  const sourcePoints = Array.isArray(raw?.points) ? raw.points : [];
+  sourcePoints.slice(0, 40).forEach((point, index) => {
+    const label = cleanLabel(point.label, index);
+    const originalId = cleanText(point.id, label);
+    const id = uniqueSceneId(originalId || `p_${label}`, usedIds);
+    const normalized = {
+      id,
+      label,
+      x: clampNumber(point.x, -520, 520, index * 24 - 180),
+      y: clampNumber(point.y, -380, 380, index * 24 - 120),
+      color: cleanColor(point.color, POINT_COLOR),
+      radius: clampNumber(point.radius, 3, 9, 5),
+      labelColor: cleanColor(point.labelColor, LABEL_COLOR),
+      role: cleanText(point.role, "")
+    };
+    next.points.push(normalized);
+    idMap.set(originalId, id);
+    idMap.set(label, id);
+  });
+
+  if (next.points.length < 2) throw new Error("AI chưa tạo đủ điểm để dựng hình.");
+
+  const resolve = (value) => idMap.get(String(value || "").trim()) || "";
+
+  next.segments = (Array.isArray(raw?.segments) ? raw.segments : [])
+    .slice(0, 80)
+    .map((segment) => ({
+      id: uniqueSceneId(cleanText(segment.id, "s"), usedIds),
+      from: resolve(segment.from),
+      to: resolve(segment.to),
+      color: cleanColor(segment.color, BASE_COLOR),
+      width: clampNumber(segment.width, 1, 6, 2),
+      dashed: Boolean(segment.dashed),
+      role: cleanText(segment.role, "")
+    }))
+    .filter((segment) => segment.from && segment.to && segment.from !== segment.to);
+
+  next.circles = (Array.isArray(raw?.circles) ? raw.circles : [])
+    .slice(0, 20)
+    .map((circle) => ({
+      id: uniqueSceneId(cleanText(circle.id, "c"), usedIds),
+      center: resolve(circle.center),
+      radius: clampNumber(circle.radius, 8, 420, 120),
+      color: cleanColor(circle.color, "#42d392"),
+      width: clampNumber(circle.width, 1, 6, 2),
+      dashed: Boolean(circle.dashed),
+      role: cleanText(circle.role, "")
+    }))
+    .filter((circle) => circle.center);
+
+  next.polygons = (Array.isArray(raw?.polygons) ? raw.polygons : [])
+    .slice(0, 20)
+    .map((polygon) => ({
+      id: uniqueSceneId(cleanText(polygon.id, "poly"), usedIds),
+      points: (Array.isArray(polygon.points) ? polygon.points : []).map(resolve).filter(Boolean),
+      color: cleanColor(polygon.color, BASE_COLOR),
+      width: clampNumber(polygon.width, 1, 6, 2),
+      fill: cleanColor(polygon.fill, "rgba(88,166,255,0.08)")
+    }))
+    .filter((polygon) => polygon.points.length >= 3);
+
+  next.angles = (Array.isArray(raw?.angles) ? raw.angles : [])
+    .slice(0, 30)
+    .map((angle) => ({
+      id: uniqueSceneId(cleanText(angle.id, "angle"), usedIds),
+      a: resolve(angle.a),
+      o: resolve(angle.o),
+      b: resolve(angle.b),
+      radius: clampNumber(angle.radius, 12, 70, 34),
+      color: cleanColor(angle.color, "#42d392")
+    }))
+    .filter((angle) => angle.a && angle.o && angle.b);
+
+  next.texts = (Array.isArray(raw?.texts) ? raw.texts : [])
+    .slice(0, 20)
+    .map((text, index) => ({
+      id: uniqueSceneId(cleanText(text.id, "t"), usedIds),
+      x: clampNumber(text.x, -560, 560, -260),
+      y: clampNumber(text.y, -420, 420, 250 + index * 22),
+      text: cleanText(text.text, ""),
+      color: cleanColor(text.color, "#cfe7dc"),
+      size: clampNumber(text.size, 10, 24, 15)
+    }))
+    .filter((text) => text.text);
+
+  next.meta = {
+    type: cleanText(raw?.meta?.type, "ai"),
+    prompt,
+    ab: Number(raw?.meta?.ab) || readLength(prompt, "AB", 0),
+    bc: Number(raw?.meta?.bc) || readLength(prompt, "BC", 0),
+    notes: Array.isArray(raw?.meta?.notes) ? raw.meta.notes.slice(0, 8).map((note) => cleanText(note, "")) : []
+  };
+  return next;
+}
+
+function renderAISolution(data) {
+  const steps = Array.isArray(data.steps) ? data.steps : [];
+  const items = steps
+    .map((step) => `<li>${escapeHtml(step)}</li>`)
+    .join("");
+  const finalAnswer = cleanText(data.finalAnswer, "");
+  return `
+    <h3>${escapeHtml(cleanText(data.title, "Lời giải AI"))}</h3>
+    <ol>${items || "<li>AI chưa tạo được bước giải chi tiết.</li>"}</ol>
+    ${finalAnswer ? `<p><b>Kết luận:</b> ${escapeHtml(finalAnswer)}</p>` : ""}
+  `;
+}
+
+function uniqueSceneId(value, usedIds) {
+  const base = String(value || "id")
+    .trim()
+    .replace(/[^a-zA-Z0-9_-]/g, "_")
+    .slice(0, 32) || "id";
+  let id = base;
+  let index = 2;
+  while (usedIds.has(id)) {
+    id = `${base}_${index}`;
+    index += 1;
+  }
+  usedIds.add(id);
+  return id;
+}
+
+function cleanLabel(value, index) {
+  const label = String(value || "").trim().toUpperCase();
+  if (/^[A-Z][0-9]?$/.test(label)) return label;
+  return String.fromCharCode(65 + (index % 26));
+}
+
+function cleanText(value, fallback) {
+  const text = String(value ?? "").trim();
+  return text || fallback;
+}
+
+function cleanColor(value, fallback) {
+  const color = String(value || "").trim();
+  if (/^#[0-9a-f]{3,8}$/i.test(color)) return color;
+  if (/^rgba?\([\d\s.,%]+\)$/i.test(color)) return color;
+  return fallback;
+}
+
+function clampNumber(value, min, max, fallback) {
+  const number = Number(value);
+  if (!Number.isFinite(number)) return fallback;
+  return Math.max(min, Math.min(max, number));
+}
+
 function rectangleScene(prompt) {
   const ab = readLength(prompt, "AB", 8);
   const bc = readLength(prompt, "BC", readLength(prompt, "AD", 6));
@@ -1032,16 +1581,65 @@ function initEvents() {
   }, { passive: false });
 
   ui.tools.forEach((button) => button.addEventListener("click", () => setTool(button.dataset.tool)));
-  ui.generateBtn.addEventListener("click", () => {
-    const next = createSceneFromPrompt(ui.problemInput.value);
-    setScene(next, "AI đã tạo hình từ đề bài.");
-    fitScene();
+  ui.aiProvider.addEventListener("change", () => {
+    updateProviderDefaults();
+    saveAISettings();
   });
-  ui.solveBtn.addEventListener("click", () => {
-    const solution = makeSolution();
-    ui.solutionTitle.textContent = solution.title;
-    ui.solutionOutput.innerHTML = solution.html;
-    setStatus("Đã tạo lời giải mẫu.");
+  ui.aiApiKey.addEventListener("input", () => updateAIMode());
+  ui.aiApiKey.addEventListener("change", saveAISettings);
+  ui.aiModel.addEventListener("input", () => updateAIMode());
+  ui.aiModel.addEventListener("change", saveAISettings);
+  ui.aiEndpoint.addEventListener("input", () => updateAIMode());
+  ui.aiEndpoint.addEventListener("change", saveAISettings);
+  ui.saveAiKey.addEventListener("change", saveAISettings);
+  ui.clearAiKeyBtn.addEventListener("click", clearAIKey);
+  ui.generateBtn.addEventListener("click", async () => {
+    const prompt = ui.problemInput.value.trim();
+    if (!prompt) {
+      setStatus("Hãy nhập đề bài trước khi tạo hình.");
+      return;
+    }
+
+    const oldText = ui.generateBtn.textContent;
+    ui.generateBtn.disabled = true;
+    ui.generateBtn.textContent = hasAIKey() ? "AI đang dựng hình..." : "Đang dựng hình demo...";
+    try {
+      const next = hasAIKey() ? await createSceneWithAI(prompt) : createSceneFromPrompt(prompt);
+      setScene(next, hasAIKey() ? "AI thật đã tạo hình từ đề bài." : "Chưa nhập API key, đã tạo hình bằng chế độ demo.");
+      fitScene();
+      updateAIMode();
+    } catch (error) {
+      console.error(error);
+      const next = createSceneFromPrompt(prompt);
+      setScene(next, "AI thật bị lỗi nên app tạm tạo hình bằng chế độ demo.");
+      fitScene();
+      updateAIMode(`Lỗi AI: ${error.message}`);
+    } finally {
+      ui.generateBtn.disabled = false;
+      ui.generateBtn.textContent = oldText;
+    }
+  });
+  ui.solveBtn.addEventListener("click", async () => {
+    const oldText = ui.solveBtn.textContent;
+    ui.solveBtn.disabled = true;
+    ui.solveBtn.textContent = hasAIKey() ? "AI đang giải..." : "Đang tạo lời giải demo...";
+    try {
+      const solution = hasAIKey() ? await solveWithAI(ui.questionInput.value.trim()) : makeSolution();
+      ui.solutionTitle.textContent = solution.title;
+      ui.solutionOutput.innerHTML = solution.html;
+      setStatus(hasAIKey() ? "AI thật đã tạo lời giải từ hình hiện tại." : "Đã tạo lời giải mẫu.");
+      updateAIMode();
+    } catch (error) {
+      console.error(error);
+      const solution = makeSolution();
+      ui.solutionTitle.textContent = solution.title;
+      ui.solutionOutput.innerHTML = solution.html;
+      setStatus("AI thật bị lỗi nên app tạm dùng lời giải demo.");
+      updateAIMode(`Lỗi AI: ${error.message}`);
+    } finally {
+      ui.solveBtn.disabled = false;
+      ui.solveBtn.textContent = oldText;
+    }
   });
   ui.clearSolutionBtn.addEventListener("click", () => {
     ui.solutionTitle.textContent = "Chưa có lời giải";
@@ -1092,6 +1690,7 @@ function initEvents() {
 
 function init() {
   initEvents();
+  loadAISettings();
   resize();
   if (!loadScene()) {
     scene = rectangleScene(ui.problemInput.value);

@@ -1,0 +1,138 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#0f1815">
+  <meta name="description" content="Ve hinh hoc phang 2D va tao loi giai mau bang AI cho giao vien.">
+  <title>Vẽ hình học phẳng 2D AI</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="app-shell">
+    <header class="topbar">
+      <a class="brand" href="./" aria-label="Về trang vẽ hình học phẳng 2D">
+        <span class="brand-mark" aria-hidden="true">2D</span>
+        <span>
+          <strong>Vẽ hình học phẳng</strong>
+          <small>AI dựng hình và gợi ý lời giải</small>
+        </span>
+      </a>
+
+      <div class="top-actions" aria-label="Thao tác nhanh">
+        <button id="undoBtn" class="icon-btn" type="button" title="Hoàn tác" aria-label="Hoàn tác">↶</button>
+        <button id="redoBtn" class="icon-btn" type="button" title="Làm lại" aria-label="Làm lại">↷</button>
+        <button id="fitBtn" class="soft-btn" type="button">Vừa màn hình</button>
+        <button id="exportBtn" class="soft-btn" type="button">Xuất ảnh</button>
+        <button id="saveBtn" class="primary-btn" type="button">Lưu</button>
+      </div>
+    </header>
+
+    <main class="workspace">
+      <aside class="sidebar" aria-label="Bảng điều khiển">
+        <section class="panel">
+          <div class="panel-heading">
+            <span>Vẽ thông minh</span>
+            <button id="loadSampleBtn" class="text-btn" type="button">Nạp ví dụ</button>
+          </div>
+          <label class="field-label" for="problemInput">Đề bài</label>
+          <textarea id="problemInput" rows="7" spellcheck="false">Cho hình chữ nhật ABCD có AB = 8cm, BC = 6cm. Kẻ đường cao AH của tam giác ABD. Hãy tính BD, AH và chứng minh hai tam giác đồng dạng.</textarea>
+          <button id="generateBtn" class="primary-btn full" type="button">Tạo hình AI</button>
+          <p class="hint">Bản MVP nhận tốt các đề có hình chữ nhật, tam giác, đường cao, trung tuyến, đường tròn.</p>
+        </section>
+
+        <section class="panel">
+          <div class="panel-heading">
+            <span>Giải toán AI</span>
+            <button id="clearSolutionBtn" class="text-btn" type="button">Xóa lời giải</button>
+          </div>
+          <label class="field-label" for="questionInput">Câu hỏi cần giải</label>
+          <textarea id="questionInput" rows="4" spellcheck="false">Tính BD, AH và chứng minh tam giác AHB đồng dạng tam giác BCD.</textarea>
+          <button id="solveBtn" class="accent-btn full" type="button">Giải bài bằng AI</button>
+        </section>
+
+        <section class="panel compact">
+          <label class="field-label" for="shapePreset">Thư viện hình</label>
+          <div class="inline-row">
+            <select id="shapePreset">
+              <option value="rectangle">Hình chữ nhật</option>
+              <option value="triangle">Tam giác thường</option>
+              <option value="rightTriangle">Tam giác vuông</option>
+              <option value="circleTriangle">Tam giác nội tiếp đường tròn</option>
+            </select>
+            <button id="insertPresetBtn" class="square-btn" type="button" title="Chèn hình" aria-label="Chèn hình">+</button>
+          </div>
+        </section>
+
+        <section class="panel">
+          <div class="panel-heading"><span>Công cụ</span></div>
+          <div class="tool-grid" role="group" aria-label="Công cụ vẽ">
+            <button class="tool active" data-tool="select" type="button">Chọn</button>
+            <button class="tool" data-tool="point" type="button">Điểm</button>
+            <button class="tool" data-tool="segment" type="button">Đoạn</button>
+            <button class="tool" data-tool="dashed" type="button">Nét đứt</button>
+            <button class="tool" data-tool="circle" type="button">Đường tròn</button>
+            <button class="tool" data-tool="polygon" type="button">Đa giác</button>
+            <button class="tool" data-tool="angle" type="button">Góc</button>
+            <button class="tool" data-tool="text" type="button">Văn bản</button>
+            <button class="tool danger" data-tool="erase" type="button">Xóa</button>
+          </div>
+          <div class="style-row">
+            <label>
+              Màu
+              <input id="colorPicker" type="color" value="#58a6ff">
+            </label>
+            <label>
+              Nét
+              <input id="strokeWidth" type="range" min="1" max="6" value="2">
+            </label>
+          </div>
+        </section>
+
+        <section class="panel compact">
+          <label class="field-label" for="specialPoint">Điểm đặc biệt</label>
+          <div class="inline-row">
+            <select id="specialPoint">
+              <option value="centroid">Trọng tâm</option>
+              <option value="orthocenter">Trực tâm</option>
+              <option value="circumcenter">Tâm ngoại tiếp</option>
+              <option value="incenter">Tâm nội tiếp</option>
+            </select>
+            <button id="addSpecialBtn" class="square-btn" type="button" title="Thêm điểm" aria-label="Thêm điểm">+</button>
+          </div>
+        </section>
+
+        <section class="panel compact">
+          <div class="panel-heading"><span>Trạng thái</span></div>
+          <p id="statusText" class="status-text">Sẵn sàng. Kéo nền để di chuyển, cuộn để zoom.</p>
+        </section>
+      </aside>
+
+      <section class="stage" aria-label="Vùng vẽ hình">
+        <canvas id="geometryCanvas"></canvas>
+        <div class="canvas-toolbar" aria-label="Điều khiển canvas">
+          <button id="zoomInBtn" class="icon-btn" type="button" title="Phóng to" aria-label="Phóng to">+</button>
+          <button id="zoomOutBtn" class="icon-btn" type="button" title="Thu nhỏ" aria-label="Thu nhỏ">−</button>
+          <button id="gridBtn" class="icon-btn active" type="button" title="Bật/tắt lưới" aria-label="Bật/tắt lưới">#</button>
+        </div>
+        <div class="stage-tip" id="stageTip">Chọn công cụ rồi thao tác trên lưới. Với đoạn thẳng/đường tròn, bấm 2 điểm.</div>
+      </section>
+
+      <aside class="solution-panel" aria-label="Lời giải AI">
+        <div class="solution-header">
+          <div>
+            <span>Lời giải AI</span>
+            <strong id="solutionTitle">Chưa có lời giải</strong>
+          </div>
+          <button id="copySolutionBtn" class="text-btn" type="button">Copy</button>
+        </div>
+        <div id="solutionOutput" class="solution-output">
+          <p>Nhập câu hỏi rồi bấm <b>Giải bài bằng AI</b>. Bản này tạo lời giải mẫu ngay trong trình duyệt, đủ để demo luồng app trước khi nối API thật.</p>
+        </div>
+      </aside>
+    </main>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
